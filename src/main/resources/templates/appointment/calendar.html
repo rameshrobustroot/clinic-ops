@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Calendar')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'schedule')}">
+<section>
+
+    <!-- ── View toggle + navigation ─────────────────────────────────── -->
+    <div class="flex items-center justify-between mb-3 gap-2">
+
+        <!-- Month / Week tabs -->
+        <div class="flex gap-1 text-xs">
+            <a th:href="@{/appointments/calendar(view='month')}"
+               class="px-3 py-1.5 rounded-full font-medium"
+               th:classappend="${view == 'month'} ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'">Month</a>
+            <a th:href="@{/appointments/calendar(view='week')}"
+               class="px-3 py-1.5 rounded-full font-medium"
+               th:classappend="${view == 'week'} ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'">Week</a>
+        </div>
+
+        <!-- Today shortcut -->
+        <a th:href="@{/appointments/calendar(view=${view})}"
+           class="text-xs text-primary-600 border border-primary-300 rounded-full px-2.5 py-1 hover:bg-primary-50">Today</a>
+
+        <!-- Day view link -->
+        <a href="/appointments" class="text-xs text-slate-500 hover:text-primary-600">→ Day view</a>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         MONTH VIEW
+         ══════════════════════════════════════════════════════════════ -->
+    <th:block th:if="${view == 'month'}">
+
+        <!-- Month navigation -->
+        <div class="flex items-center justify-between mb-3">
+            <a th:href="@{/appointments/calendar(view='month', month=${prevMonth})}"
+               class="text-slate-500 hover:text-primary-600 text-xl font-bold px-2">‹</a>
+            <h1 class="text-base font-semibold"
+                th:text="${#temporals.format(yearMonth.atDay(1), 'MMMM yyyy')}"></h1>
+            <a th:href="@{/appointments/calendar(view='month', month=${nextMonth})}"
+               class="text-slate-500 hover:text-primary-600 text-xl font-bold px-2">›</a>
+        </div>
+
+        <!-- Day-of-week header -->
+        <div class="grid grid-cols-7 mb-1 text-center">
+            <div th:each="d : ${ {'M','T','W','T','F','S','S'} }"
+                 class="text-xs font-semibold text-slate-400 py-1" th:text="${d}"></div>
+        </div>
+
+        <!-- Calendar grid -->
+        <div class="grid grid-cols-7 gap-px bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
+            <div th:each="day : ${grid}"
+                 class="bg-white min-h-[56px] p-1.5 flex flex-col"
+                 th:classappend="${day.monthValue != yearMonth.monthValue} ? 'opacity-40' : ''">
+
+                <!-- Date number -->
+                <a th:href="@{/appointments(date=${day})}"
+                   class="self-start w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium transition-colors"
+                   th:classappend="${day == today} ? 'bg-primary-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
+                   th:text="${day.dayOfMonth}"></a>
+
+                <!-- Appointment count dot / badge -->
+                <div th:if="${countByDay.containsKey(day)}"
+                     class="mt-auto">
+                    <a th:href="@{/appointments(date=${day})}"
+                       class="block text-center text-[10px] font-semibold px-1 py-0.5 rounded-full bg-primary-100 text-primary-700 hover:bg-primary-200"
+                       th:text="${countByDay.get(day)}"></a>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-400 text-center mt-3">Tap a date to see that day's appointments.</p>
+    </th:block>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         WEEK VIEW
+         ══════════════════════════════════════════════════════════════ -->
+    <th:block th:if="${view == 'week'}">
+
+        <!-- Week navigation -->
+        <div class="flex items-center justify-between mb-3">
+            <a th:href="@{/appointments/calendar(view='week', week=${prevWeek})}"
+               class="text-slate-500 hover:text-primary-600 text-xl font-bold px-2">‹</a>
+            <h1 class="text-sm font-semibold text-center"
+                th:text="${#temporals.format(weekStart, 'dd MMM')} + ' – ' + ${#temporals.format(weekEnd, 'dd MMM yyyy')}"></h1>
+            <a th:href="@{/appointments/calendar(view='week', week=${nextWeek})}"
+               class="text-slate-500 hover:text-primary-600 text-xl font-bold px-2">›</a>
+        </div>
+
+        <!-- Week grid — 7 columns, scrollable on small screens -->
+        <div class="overflow-x-auto -mx-4 px-4">
+            <div class="grid grid-cols-7 gap-1 min-w-[560px]">
+
+                <!-- Day headers -->
+                <div th:each="entry : ${byDay}" class="text-center">
+                    <a th:href="@{/appointments(date=${entry.key})}"
+                       class="block rounded-xl py-1.5 transition-colors hover:bg-slate-100"
+                       th:classappend="${entry.key == today} ? 'bg-primary-600 text-white hover:bg-primary-700' : ''">
+                        <div class="text-[10px] font-medium uppercase tracking-wide"
+                             th:text="${#temporals.format(entry.key, 'EEE')}"></div>
+                        <div class="text-base font-bold"
+                             th:text="${entry.key.dayOfMonth}"></div>
+                    </a>
+                </div>
+
+                <!-- Appointment lists per day -->
+                <div th:each="entry : ${byDay}" class="space-y-1 min-h-[80px]">
+                    <a th:each="appt : ${entry.value}"
+                       th:href="@{/appointments(date=${entry.key})}"
+                       class="block rounded-lg p-1.5 text-[10px] leading-tight truncate"
+                       th:classappend="${appt.status == 'DONE' or appt.status == 'CANCELLED' or appt.status == 'NO_SHOW'}
+                                       ? 'bg-slate-100 text-slate-400 line-through'
+                                       : (${appt.status == 'ARRIVED' or appt.status == 'IN_PROGRESS'}
+                                           ? 'bg-amber-100 text-amber-800'
+                                           : 'bg-primary-50 text-primary-800')">
+                        <span class="font-semibold"
+                              th:text="'#' + ${appt.tokenNo} + ' ' + ${patientById.containsKey(appt.patientId) ? patientById.get(appt.patientId).name : (appt.patientName ?: '?')}"></span>
+                        <br th:if="${appt.appointmentTime != null}"/>
+                        <span th:if="${appt.appointmentTime != null}"
+                              class="text-slate-500"
+                              th:text="${#temporals.format(appt.appointmentTime, 'h:mma')}"></span>
+                    </a>
+                    <!-- "+ Book" micro-link on empty day -->
+                    <a th:if="${#lists.isEmpty(entry.value)}"
+                       th:href="@{/appointments/new(date=${entry.key})}"
+                       class="block text-center text-slate-300 hover:text-primary-400 text-xs py-2">+</a>
+                </div>
+
+            </div>
+        </div>
+    </th:block>
+
+</section>
+</body>
+</html>

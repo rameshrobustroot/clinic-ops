@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Terms & Privacy')}"></head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+<header class="sticky top-0 z-30 bg-primary-600 text-white shadow">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="/" class="font-semibold text-lg">ClinicOps</a>
+        <a href="/login" class="text-sm opacity-90 hover:opacity-100">Login</a>
+    </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-6 leading-relaxed">
+
+    <h1 class="text-2xl font-bold mb-1" th:text="#{terms.title}">Terms of Service, Privacy &amp; Healthcare Disclaimer</h1>
+    <p class="text-xs text-slate-500 mb-3">
+        <span th:text="#{terms.version}">Version</span> <span class="font-mono" th:text="${termsVersion}"></span>
+        <span th:if="${termsEffectiveDate != null}">
+            &middot; <span th:text="#{terms.effective}">effective</span>
+            <span th:text="${#temporals.format(termsEffectiveDate, 'dd MMM yyyy')}"></span>
+        </span>
+    </p>
+
+    <!-- Trusted HTML body authored by the platform owner via /platform/terms. -->
+    <div th:utext="${termsBody}"></div>
+
+    <a href="/login" class="text-primary-600 text-sm" th:text="#{terms.back_to_login}">← Back to login</a>
+</main>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

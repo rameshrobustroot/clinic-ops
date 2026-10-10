@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="002-seed-clinic" author="claude">
+        <insert tableName="clinic">
+            <column name="id" valueNumeric="1"/>
+            <column name="name" value="My Clinic"/>
+            <column name="phone" value="+910000000000"/>
+            <column name="address" value="Configure in Settings"/>
+        </insert>
+        <sql>SELECT setval(pg_get_serial_sequence('clinic','id'), (SELECT MAX(id) FROM clinic));</sql>
+    </changeSet>
+
+</databaseChangeLog>

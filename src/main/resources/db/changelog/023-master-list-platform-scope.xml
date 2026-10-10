@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Split master lists (degrees / specializations / investigations) into two scopes:
+            * clinic_id IS NULL  → "platform" row, curated by PLATFORM_ADMIN, visible to all clinics
+            * clinic_id = N      → clinic-N-specific row, visible only to that clinic
+         Old indexes assumed clinic_id NOT NULL; replace with two partial unique indexes
+         (one per scope) to keep both scopes individually unique. -->
+
+    <!-- ===== medical_degree ===== -->
+    <changeSet id="023-degree-clinic-nullable" author="claude">
+        <dropIndex tableName="medical_degree" indexName="ux_degree_clinic_name"/>
+        <dropNotNullConstraint tableName="medical_degree" columnName="clinic_id" columnDataType="BIGINT"/>
+    </changeSet>
+    <changeSet id="023-degree-platform-unique-index" author="claude">
+        <sql>CREATE UNIQUE INDEX ux_degree_platform_name
+             ON medical_degree (LOWER(name)) WHERE clinic_id IS NULL</sql>
+        <rollback>DROP INDEX ux_degree_platform_name</rollback>
+    </changeSet>
+    <changeSet id="023-degree-clinic-unique-index" author="claude">
+        <sql>CREATE UNIQUE INDEX ux_degree_clinic_name
+             ON medical_degree (clinic_id, LOWER(name)) WHERE clinic_id IS NOT NULL</sql>
+        <rollback>DROP INDEX ux_degree_clinic_name</rollback>
+    </changeSet>
+
+    <!-- ===== medical_specialization ===== -->
+    <changeSet id="023-spec-clinic-nullable" author="claude">
+        <dropIndex tableName="medical_specialization" indexName="ux_spec_clinic_name"/>
+        <dropNotNullConstraint tableName="medical_specialization" columnName="clinic_id" columnDataType="BIGINT"/>
+    </changeSet>
+    <changeSet id="023-spec-platform-unique-index" author="claude">
+        <sql>CREATE UNIQUE INDEX ux_spec_platform_name
+             ON medical_specialization (LOWER(name)) WHERE clinic_id IS NULL</sql>
+        <rollback>DROP INDEX ux_spec_platform_name</rollback>
+    </changeSet>
+    <changeSet id="023-spec-clinic-unique-index" author="claude">
+        <sql>CREATE UNIQUE INDEX ux_spec_clinic_name
+             ON medical_specialization (clinic_id, LOWER(name)) WHERE clinic_id IS NOT NULL</sql>
+        <rollback>DROP INDEX ux_spec_clinic_name</rollback>
+    </changeSet>
+
+    <!-- ===== medical_investigation ===== -->
+    <changeSet id="023-inv-clinic-nullable" author="claude">
+        <dropIndex tableName="medical_investigation" indexName="ux_invmaster_clinic_name"/>
+        <dropNotNullConstraint tableName="medical_investigation" columnName="clinic_id" columnDataType="BIGINT"/>
+    </changeSet>
+    <changeSet id="023-inv-platform-unique-index" author="claude">
+        <sql>CREATE UNIQUE INDEX ux_invmaster_platform_name
+             ON medical_investigation (LOWER(name)) WHERE clinic_id IS NULL</sql>
+        <rollback>DROP INDEX ux_invmaster_platform_name</rollback>
+    </changeSet>
+    <changeSet id="023-inv-clinic-unique-index" author="claude">
+        <sql>CREATE UNIQUE INDEX ux_invmaster_clinic_name
+             ON medical_investigation (clinic_id, LOWER(name)) WHERE clinic_id IS NOT NULL</sql>
+        <rollback>DROP INDEX ux_invmaster_clinic_name</rollback>
+    </changeSet>
+
+    <!-- Consolidate the original clinic-1 seed rows into platform rows so all clinics
+         (existing and future) see the catalogue out of the box. Any clinic-1-specific
+         additions get promoted along with them; the OWNER can move them back to
+         clinic-specific scope if needed. Other clinics' bespoke rows are untouched.
+         Where the same name exists both as a clinic-1 row and as another clinic's row,
+         keep the platform row and let the clinic-specific row continue to coexist —
+         the new unique indexes permit it (different scopes). -->
+    <changeSet id="023-promote-clinic-1-seed-to-platform" author="claude">
+        <sql>UPDATE medical_degree         SET clinic_id = NULL WHERE clinic_id = 1</sql>
+        <sql>UPDATE medical_specialization SET clinic_id = NULL WHERE clinic_id = 1</sql>
+        <sql>UPDATE medical_investigation  SET clinic_id = NULL WHERE clinic_id = 1</sql>
+    </changeSet>
+
+</databaseChangeLog>

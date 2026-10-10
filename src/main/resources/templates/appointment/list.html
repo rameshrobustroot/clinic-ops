@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(#{appointments.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'dashboard')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <h1 class="text-xl font-semibold" th:text="#{appointments.title}">Follow-up Appointments</h1>
+    </div>
+
+    <!-- Range selector -->
+    <div class="flex gap-1 mb-4 text-xs">
+        <a th:href="@{/appointments(days=1)}"
+           class="px-3 py-1.5 rounded-full"
+           th:classappend="${days == 1} ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'"
+           th:text="#{appointments.range.today}">Today</a>
+        <a th:href="@{/appointments(days=7)}"
+           class="px-3 py-1.5 rounded-full"
+           th:classappend="${days == 7} ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'"
+           th:text="#{appointments.range.week}">This week</a>
+        <a th:href="@{/appointments(days=30)}"
+           class="px-3 py-1.5 rounded-full"
+           th:classappend="${days == 30} ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'"
+           th:text="#{appointments.range.month}">30 days</a>
+    </div>
+
+    <p class="text-xs text-slate-400 mb-3"
+       th:text="'Showing ' + ${#temporals.format(today, 'dd MMM')} + ' – ' + ${#temporals.format(end, 'dd MMM yyyy')}"></p>
+
+    <div th:if="${byDate.isEmpty()}" class="text-center text-slate-500 py-12">
+        <p class="mb-1">No follow-ups scheduled in this range.</p>
+        <p class="text-xs">Follow-ups are set on the visit form's <em>Follow-up date</em> field.</p>
+    </div>
+
+    <div th:each="entry : ${byDate}" class="mb-5">
+        <div class="flex items-center gap-2 mb-2">
+            <h2 class="text-sm font-semibold text-slate-700"
+                th:text="${#temporals.format(entry.key, 'EEE, dd MMM yyyy')}"></h2>
+            <span th:if="${entry.key == today}"
+                  class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">Today</span>
+            <span class="text-xs text-slate-400"
+                  th:text="${#lists.size(entry.value)} + ' patient' + (${#lists.size(entry.value)} == 1 ? '' : 's')"></span>
+        </div>
+        <ul class="space-y-2">
+            <li th:each="v : ${entry.value}">
+                <a th:href="@{/patients/{id}(id=${v.patientId})}"
+                   class="block bg-white border border-slate-200 rounded-xl p-3 hover:border-primary-400">
+                    <div class="flex items-center justify-between gap-2">
+                        <div>
+                            <div class="font-medium"
+                                 th:text="${patientById.get(v.patientId) != null
+                                         ? patientById.get(v.patientId).name
+                                         : 'Patient ' + v.patientId}"></div>
+                            <div class="text-xs text-slate-500 mt-0.5">
+                                <span th:if="${patientById.get(v.patientId) != null}"
+                                      th:text="${patientById.get(v.patientId).phone}"></span>
+                                <span th:if="${patientById.get(v.patientId) != null}"
+                                      class="font-mono text-slate-400"
+                                      th:text="' · ' + ${patientById.get(v.patientId).mrn}"></span>
+                            </div>
+                            <div th:if="${doctorById.get(v.doctorId) != null}"
+                                 class="text-xs text-slate-500 mt-0.5"
+                                 th:text="'Doctor: Dr ' + ${doctorById.get(v.doctorId).fullName}"></div>
+                        </div>
+                        <span class="font-mono text-xs text-slate-400"
+                              th:text="${v.encounterNo}"></span>
+                    </div>
+                </a>
+            </li>
+        </ul>
+    </div>
+</section>
+</body>
+</html>

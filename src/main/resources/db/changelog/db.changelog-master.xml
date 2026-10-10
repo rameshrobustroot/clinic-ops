@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+    <include file="db/changelog/001-initial-schema.xml"/>
+    <include file="db/changelog/002-seed-data.xml"/>
+    <include file="db/changelog/003-walkin-info.xml"/>
+    <include file="db/changelog/004-medical-ids.xml"/>
+    <include file="db/changelog/005-supplier-payment.xml"/>
+    <include file="db/changelog/006-prescription-procurement.xml"/>
+    <include file="db/changelog/007-tenant-isolation.xml"/>
+    <include file="db/changelog/008-multi-tenant-auth.xml"/>
+    <include file="db/changelog/009-user-theme.xml"/>
+    <include file="db/changelog/010-medicine-uniqueness.xml"/>
+    <include file="db/changelog/011-visit-vitals.xml"/>
+    <include file="db/changelog/012-doctor-profile.xml"/>
+    <include file="db/changelog/013-clinic-profile.xml"/>
+    <include file="db/changelog/014-investigations.xml"/>
+    <include file="db/changelog/015-no-hard-delete.xml"/>
+    <include file="db/changelog/016-sale-discount.xml"/>
+    <include file="db/changelog/017-doctor-entity.xml"/>
+    <include file="db/changelog/018-master-lists.xml"/>
+    <include file="db/changelog/019-master-lists-expand.xml"/>
+    <include file="db/changelog/020-investigation-master.xml"/>
+    <include file="db/changelog/021-clinic-terms-acceptance.xml"/>
+    <include file="db/changelog/022-terms-document.xml"/>
+    <include file="db/changelog/023-master-list-platform-scope.xml"/>
+    <include file="db/changelog/024-platform-admin-no-tenant.xml"/>
+    <include file="db/changelog/025-supplier-bill.xml"/>
+    <include file="db/changelog/026-bill-payment.xml"/>
+    <include file="db/changelog/027-supplier-credit-balance.xml"/>
+    <include file="db/changelog/028-appointment.xml"/>
+    <include file="db/changelog/029-doctor-schedule.xml"/>
+    <include file="db/changelog/030-dwh-multi-session.xml"/>
+    <include file="db/changelog/031-platform-medicine-catalog.xml"/>
+    <include file="db/changelog/032-id-sequence.xml"/>
+</databaseChangeLog>

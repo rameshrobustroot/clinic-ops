@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="005-supplier-payment-columns" author="claude">
+        <addColumn tableName="supplier">
+            <!-- Bank transfer details -->
+            <column name="bank_account_name" type="VARCHAR(128)"/>
+            <column name="bank_account_number" type="VARCHAR(32)"/>
+            <column name="bank_ifsc" type="VARCHAR(16)"/>
+            <column name="bank_name" type="VARCHAR(64)"/>
+            <!-- UPI -->
+            <column name="upi_id" type="VARCHAR(64)"/>
+            <!-- Tax / freeform -->
+            <column name="gstin" type="VARCHAR(16)"/>
+            <column name="notes" type="VARCHAR(512)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

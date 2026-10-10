@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Allow multiple working-hour sessions per doctor per day.
+      Example: 10:00–13:00 and 15:00–18:00 on the same weekday.
+
+      The previous unique constraint enforced at most one row per
+      (clinic_id, doctor_id, day_of_week).  Replace it with a tighter
+      constraint at the session level: (clinic_id, doctor_id, day_of_week, start_time).
+    -->
+    <changeSet id="030-dwh-drop-day-unique" author="clinic-ops">
+        <dropUniqueConstraint tableName="doctor_working_hours"
+                              constraintName="uq_doctor_working_hours_day"/>
+    </changeSet>
+
+    <changeSet id="030-dwh-session-unique" author="clinic-ops">
+        <addUniqueConstraint tableName="doctor_working_hours"
+                             columnNames="clinic_id,doctor_id,day_of_week,start_time"
+                             constraintName="uq_doctor_working_hours_session"/>
+    </changeSet>
+
+</databaseChangeLog>

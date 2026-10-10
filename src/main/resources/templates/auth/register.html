@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta name="theme-color" content="#7c3aed"/>
+    <title th:text="#{register.title} + ' · ' + #{app.name}">Register your clinic · ClinicOps</title>
+    <link rel="manifest" href="/manifest.webmanifest"/>
+    <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml"/>
+    <script src="/vendor/tailwind-3.4.16.min.js"></script>
+    <script>
+        // Pre-auth pages always use the default (violet) palette — no user theme yet.
+        tailwind.config = { theme: { extend: { colors: { primary: {
+            50:'#f5f3ff', 100:'#ede9fe', 200:'#ddd6fe', 300:'#c4b5fd', 400:'#a78bfa',
+            500:'#8b5cf6', 600:'#7c3aed', 700:'#6d28d9', 800:'#5b21b6', 900:'#4c1d95'
+        } } } } };
+    </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-primary-500 to-primary-700 py-8 px-4">
+<div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-auto">
+    <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+            <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2m7-7v4"/></svg>
+        </div>
+        <div>
+            <h1 class="text-xl font-semibold text-slate-800" th:text="#{register.title}">Register your clinic</h1>
+            <p class="text-xs text-slate-500" th:text="#{register.tagline}">Takes a minute. Start with the owner account.</p>
+        </div>
+    </div>
+
+    <p class="text-xs text-right text-slate-400 mb-3">
+        <a th:href="@{/register(lang='en')}"
+           th:classappend="${#locale.language == 'en'} ? 'font-semibold text-primary-600' : ''">EN</a>
+        <span class="mx-1">|</span>
+        <a th:href="@{/register(lang='ta')}"
+           th:classappend="${#locale.language == 'ta'} ? 'font-semibold text-primary-600' : ''">த</a>
+    </p>
+
+    <div th:if="${#locale.language == 'ta'}"
+         class="mb-3 p-2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">
+        ⚠ <span th:text="#{draft.translation.banner}"></span>
+    </div>
+
+    <div th:if="${error}" class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+
+    <form th:action="@{/register}" th:object="${form}" method="post" class="space-y-4">
+
+        <div class="border-b border-slate-100 pb-2 text-xs uppercase tracking-wider text-slate-400 font-semibold"
+             th:text="#{register.section.clinic}">Clinic</div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">
+                <span th:text="#{register.clinic_name}">Clinic name</span> *</label>
+            <input th:field="*{clinicName}" required maxlength="128" th:placeholder="#{register.clinic_name.placeholder}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p class="text-xs text-slate-400 mt-1" th:text="#{register.clinic_name.hint}">A short login code will be derived from this name automatically.</p>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700" th:text="#{register.clinic_phone}">Clinic phone</label>
+            <input th:field="*{clinicPhone}" type="tel" inputmode="numeric"
+                   pattern="^[6-9][0-9]{9}$" maxlength="10" placeholder="9876543210"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700" th:text="#{register.clinic_address}">Clinic address</label>
+            <input th:field="*{clinicAddress}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div class="border-b border-slate-100 pb-2 text-xs uppercase tracking-wider text-slate-400 font-semibold pt-2"
+             th:text="#{register.section.owner}">Owner account</div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">
+                <span th:text="#{register.full_name}">Full name</span> *</label>
+            <input th:field="*{ownerFullName}" required maxlength="128"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">
+                <span th:text="#{register.username}">Username</span> *</label>
+            <input th:field="*{username}" required pattern="[a-z0-9._-]{3,32}" maxlength="32"
+                   placeholder="admin"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none lowercase"
+                   style="text-transform: lowercase"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700" th:text="#{common.phone}">Phone</label>
+            <input th:field="*{ownerPhone}" type="tel" inputmode="numeric"
+                   pattern="^[6-9][0-9]{9}$" maxlength="10" placeholder="9876543210"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">
+                <span th:text="#{register.password_min}">Password (6+ chars)</span> *</label>
+            <input th:field="*{password}" type="password" required minlength="6" autocomplete="new-password"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">
+                <span th:text="#{register.confirm_password}">Confirm password</span> *</label>
+            <input th:field="*{confirmPassword}" type="password" required minlength="6" autocomplete="new-password"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100">
+            <label class="flex gap-2 items-start text-sm cursor-pointer">
+                <input type="checkbox" name="acceptTerms" value="true" required
+                       class="mt-0.5 w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"/>
+                <span class="text-slate-700">
+                    <span th:text="#{register.accept_terms}">I have read and accept the</span>
+                    <a href="/terms" target="_blank" class="text-primary-600 underline" th:text="#{register.accept_terms.link}">Terms of Service, Privacy Policy &amp; Healthcare Disclaimer</a>
+                    <span th:text="#{register.accept_terms.suffix}">on behalf of the clinic.</span>
+                </span>
+            </label>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition"
+                th:text="#{register.submit}">
+            Create Clinic
+        </button>
+    </form>
+
+    <p class="mt-4 text-xs text-slate-500 text-center">
+        <span th:text="#{register.already_have_account}">Already have an account?</span>
+        <a href="/login" class="text-primary-600 font-medium" th:text="#{register.sign_in_link}">Sign in</a>
+    </p>
+</div>
+</body>
+</html>

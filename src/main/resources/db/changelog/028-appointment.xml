@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="028-appointment" author="clinic-ops">
+        <createTable tableName="appointment">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="clinic_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Patient — may be an existing registered patient or a walk-in -->
+            <column name="patient_id" type="BIGINT"/>
+            <column name="patient_name" type="VARCHAR(128)"/>
+            <column name="patient_phone" type="VARCHAR(15)"/>
+
+            <column name="doctor_id" type="BIGINT"/>
+
+            <column name="appointment_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <!-- null = token/walk-in, no fixed slot -->
+            <column name="appointment_time" type="TIME"/>
+
+            <column name="duration_minutes" type="INT" defaultValueNumeric="15"/>
+
+            <!--
+              SCHEDULED  — booked, patient not yet arrived
+              ARRIVED    — patient checked in at reception
+              IN_PROGRESS— consultation started
+              DONE       — consultation finished
+              CANCELLED  — cancelled before the date
+              NO_SHOW    — patient didn't come
+            -->
+            <column name="status" type="VARCHAR(20)" defaultValue="SCHEDULED">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Token number within the day (auto-assigned per doctor) -->
+            <column name="token_no" type="INT"/>
+
+            <column name="reason" type="VARCHAR(256)"/>
+            <column name="notes" type="VARCHAR(512)"/>
+
+            <!-- Linked visit created when consultation begins -->
+            <column name="visit_id" type="BIGINT"/>
+
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="appointment" indexName="idx_appt_clinic_date">
+            <column name="clinic_id"/>
+            <column name="appointment_date"/>
+        </createIndex>
+
+        <createIndex tableName="appointment" indexName="idx_appt_clinic_doctor_date">
+            <column name="clinic_id"/>
+            <column name="doctor_id"/>
+            <column name="appointment_date"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

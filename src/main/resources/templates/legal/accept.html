@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(#{terms.title})}"></head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+<header class="sticky top-0 z-30 bg-primary-600 text-white shadow">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <span class="font-semibold text-lg" th:text="#{app.name}">ClinicOps</span>
+        <form th:action="@{/logout}" method="post" class="m-0">
+            <button class="opacity-90 hover:opacity-100 text-sm" type="submit" th:text="#{nav.logout}">Logout</button>
+        </form>
+    </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-6 leading-relaxed">
+
+    <div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-sm">
+        <strong th:text="#{terms.accept.action_required}">Action required.</strong>
+        <span th:text="#{terms.accept.body}">Our Terms of Service / Privacy / Healthcare Disclaimer have been updated. Please review the current version below and accept to continue using ClinicOps. The acceptance is recorded against your clinic for audit.</span>
+    </div>
+
+    <h1 class="text-2xl font-bold mb-1" th:text="#{terms.title}">Terms of Service, Privacy &amp; Healthcare Disclaimer</h1>
+    <p class="text-xs text-slate-500 mb-3">
+        <span th:text="#{terms.version}">Version</span> <span class="font-mono" th:text="${termsVersion}"></span>
+        <span th:if="${termsEffectiveDate != null}">
+            &middot; <span th:text="#{terms.effective}">effective</span>
+            <span th:text="${#temporals.format(termsEffectiveDate, 'dd MMM yyyy')}"></span>
+        </span>
+    </p>
+
+    <p class="text-xs text-slate-500 mb-3"
+       th:if="${clinic != null and clinic.termsVersion != null}">
+        <span th:text="#{terms.accept.last_accepted_prefix}">Your clinic last accepted version</span>
+        <span class="font-mono" th:text="${clinic.termsVersion}"></span>
+        <span th:text="#{terms.accept.last_accepted_on}">on</span>
+        <span th:text="${clinic.termsAcceptedAt != null ? #temporals.format(clinic.termsAcceptedAt, 'dd MMM yyyy') : '—'}"></span>.
+    </p>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4 max-h-[60vh] overflow-y-auto">
+        <div th:utext="${termsBody}"></div>
+    </div>
+
+    <form th:action="@{/terms/accept}" method="post" class="bg-white border border-slate-200 rounded-xl p-4">
+        <label class="flex gap-2 items-start text-sm cursor-pointer mb-3">
+            <input type="checkbox" name="acceptTerms" value="true" required
+                   class="mt-0.5 w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"/>
+            <span class="text-slate-700" th:text="#{terms.accept.checkbox}">
+                I confirm I have read the updated terms above and accept them on behalf of the clinic.
+            </span>
+        </label>
+        <div class="flex gap-2">
+            <button type="submit"
+                    class="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg"
+                    th:text="#{terms.accept.button}">
+                Accept and continue
+            </button>
+            <form th:action="@{/logout}" method="post" class="m-0">
+                <button class="text-slate-500 px-4 py-2 text-sm" type="submit" th:text="#{terms.accept.logout}">Logout instead</button>
+            </form>
+        </div>
+    </form>
+</main>
+
+</body>
+</html>

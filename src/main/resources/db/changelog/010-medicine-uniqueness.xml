@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="010-medicine-active" author="claude">
+        <addColumn tableName="medicine">
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Pre-dedup: any pre-existing duplicate rows from before the constraint existed are soft-deleted
+         (keeping the oldest of each group). Needs to run before the unique index is created. -->
+    <changeSet id="010-medicine-soft-dedupe" author="claude" dbms="postgresql">
+        <sql splitStatements="false"><![CDATA[
+            WITH ranked AS (
+                SELECT id,
+                       row_number() OVER (
+                           PARTITION BY clinic_id,
+                                        LOWER(name),
+                                        LOWER(COALESCE(strength, '')),
+                                        LOWER(COALESCE(manufacturer, ''))
+                           ORDER BY id
+                       ) AS rn
+                FROM medicine
+                WHERE active = true
+            )
+            UPDATE medicine m
+            SET active = false
+            FROM ranked r
+            WHERE m.id = r.id AND r.rn > 1;
+        ]]></sql>
+    </changeSet>
+
+    <!-- Case-insensitive uniqueness on (clinic, name, strength, manufacturer) for *active* rows only.
+         Soft-deleted rows are excluded so the same medicine can be re-added after a delete. -->
+    <changeSet id="010-medicine-unique-index" author="claude" dbms="postgresql">
+        <sql>
+            CREATE UNIQUE INDEX idx_medicine_clinic_name_strength_mfg
+            ON medicine (
+                clinic_id,
+                LOWER(name),
+                LOWER(COALESCE(strength, '')),
+                LOWER(COALESCE(manufacturer, ''))
+            )
+            WHERE active = true;
+        </sql>
+        <rollback>
+            DROP INDEX IF EXISTS idx_medicine_clinic_name_strength_mfg;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

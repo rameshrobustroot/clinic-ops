@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(${title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center gap-3 mb-3">
+        <a href="/settings" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold" th:text="${title}"></h1>
+    </div>
+    <p class="text-sm text-slate-500 mb-3">
+        <span class="inline-flex items-center gap-1">
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full chip-yellow">Platform</span>
+            rows are curated by the software publisher and are shared with every clinic.
+        </span>
+        <br/>
+        <span class="inline-flex items-center gap-1">
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full chip-green">Yours</span>
+            rows are your clinic's own additions. New values typed on forms land here automatically.
+        </span>
+    </p>
+
+    <!-- Inline "add" form — always creates a clinic-scoped row. -->
+    <form th:action="@{/{kind}(kind=${kind})}" method="post"
+          class="flex gap-2 mb-4 bg-white border border-slate-200 rounded-xl p-3">
+        <input name="name" required maxlength="128" placeholder="Add to your clinic's list…"
+               class="flex-1 px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        <button type="submit"
+                class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">+ Add</button>
+    </form>
+
+    <div th:if="${#lists.isEmpty(items)}" class="text-center text-slate-500 py-12">
+        Nothing visible yet.
+    </div>
+
+    <!-- Search + list — wrapped in one Alpine component so q and matched count share state -->
+    <div th:if="${!#lists.isEmpty(items)}"
+         x-data="{
+           q: '',
+           names: [],
+           init() { this.names = Array.from(this.$el.querySelectorAll('[data-name]')).map(el => el.dataset.name); },
+           get matchCount() { return this.q === '' ? this.names.length : this.names.filter(n => n.includes(this.q.toLowerCase())).length; }
+         }">
+
+        <!-- Search input -->
+        <div class="relative mb-3">
+            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                </svg>
+            </span>
+            <input x-model="q" type="search" placeholder="Search…"
+                   class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm bg-white"/>
+        </div>
+
+        <!-- Item list -->
+        <ul class="space-y-1.5">
+            <li th:each="m : ${items}"
+                th:attr="data-name=${#strings.toLowerCase(m.name)}"
+                x-show="q === '' || $el.dataset.name.includes(q.toLowerCase())"
+                class="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-2"
+                th:classappend="${!m.active} ? 'opacity-60' : ''">
+
+                <!-- Platform row: read-only -->
+                <div th:if="${m.clinicId == null}" class="flex-1 flex items-center gap-2">
+                    <span class="text-sm flex-1" th:text="${m.name}"></span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full chip-yellow">Platform</span>
+                </div>
+
+                <!-- Clinic row: editable -->
+                <form th:if="${m.clinicId != null}" th:action="@{/{kind}/{id}/rename(kind=${kind},id=${m.id})}"
+                      method="post" class="flex-1 flex gap-2 items-center">
+                    <input name="name" th:value="${m.name}" maxlength="128"
+                           class="flex-1 bg-transparent text-sm focus:outline-none focus:bg-slate-50 px-2 py-1 rounded"/>
+                    <button type="submit" class="text-xs text-slate-500 hover:text-primary-700">Save</button>
+                </form>
+                <span th:if="${m.clinicId != null}"
+                      class="text-[10px] px-2 py-0.5 rounded-full chip-green">Yours</span>
+
+                <span th:if="${!m.active}"
+                      class="text-[10px] px-2 py-0.5 rounded-full chip-gray">Hidden</span>
+
+                <!-- Hide/Restore only for clinic rows -->
+                <form th:if="${m.clinicId != null and m.active}"
+                      th:action="@{/{kind}/{id}/delete(kind=${kind},id=${m.id})}"
+                      method="post" class="m-0">
+                    <button type="submit" class="text-xs text-red-500">Hide</button>
+                </form>
+                <form th:if="${m.clinicId != null and !m.active}"
+                      th:action="@{/{kind}/{id}/restore(kind=${kind},id=${m.id})}"
+                      method="post" class="m-0">
+                    <button type="submit" class="text-xs text-emerald-600">Restore</button>
+                </form>
+            </li>
+        </ul>
+
+        <!-- No-match notice -->
+        <p x-show="q !== '' && matchCount === 0" x-cloak
+           class="text-center text-slate-400 text-sm py-8">
+            No results for "<span x-text="q"></span>"
+        </p>
+    </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Supplier Bill')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'purchases')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/supplier-bills" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">Supplier Bill</h1>
+    </div>
+
+    <!-- Bill header card -->
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4">
+        <div class="flex items-start justify-between mb-3">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-slate-400">Bill No</div>
+                <div class="font-mono font-semibold text-lg" th:text="${bill.billNumber ?: '—'}"></div>
+            </div>
+            <span th:switch="${bill.status}">
+                <span th:case="'PAID'"
+                      class="text-xs px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold">PAID</span>
+                <span th:case="'PARTIAL'"
+                      class="text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold">PARTIAL</span>
+                <span th:case="'OVERDUE'"
+                      class="text-xs px-3 py-1 rounded-full bg-red-100 text-red-700 font-semibold">OVERDUE</span>
+                <span th:case="*"
+                      class="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-semibold">UNPAID</span>
+            </span>
+        </div>
+
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div>
+                <dt class="text-xs text-slate-400">Supplier</dt>
+                <dd class="font-medium" th:text="${supplierName ?: '—'}"></dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-400">Bill Date</dt>
+                <dd th:text="${bill.billDate != null ? #temporals.format(bill.billDate, 'dd MMM yyyy') : '—'}"></dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-400">Due Date</dt>
+                <dd th:text="${bill.dueDate != null ? #temporals.format(bill.dueDate, 'dd MMM yyyy') : '—'}"
+                    th:classappend="${bill.overdue} ? 'text-red-600 font-semibold' : ''"></dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-400">Total Amount</dt>
+                <dd class="font-semibold" th:text="'₹' + ${#numbers.formatDecimal(bill.totalAmount, 1, 2)}"></dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-400">Paid</dt>
+                <dd class="text-emerald-700 font-medium"
+                    th:text="'₹' + ${#numbers.formatDecimal(bill.paidAmount, 1, 2)}"></dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-400">Balance</dt>
+                <dd class="font-bold text-amber-700"
+                    th:text="'₹' + ${#numbers.formatDecimal(bill.balance, 1, 2)}"></dd>
+            </div>
+        </dl>
+
+        <div th:if="${bill.notes}" class="mt-3 text-xs text-slate-500 border-t border-slate-100 pt-2"
+             th:text="${bill.notes}"></div>
+
+        <!-- Attachment link -->
+        <div th:if="${bill.attachmentPath != null}" class="mt-3 border-t border-slate-100 pt-2">
+            <a th:href="@{/supplier-bills/{id}/attachment(id=${bill.id})}"
+               target="_blank"
+               class="text-sm text-primary-600 hover:text-primary-800">Download attachment →</a>
+        </div>
+    </div>
+
+    <!-- Supplier credit balance banner -->
+    <div th:if="${supplierCredit != null and supplierCredit > 0}"
+         class="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 mb-4 text-sm text-emerald-800">
+        <span class="text-emerald-500 font-bold">₹</span>
+        <span>
+            <strong th:text="${#numbers.formatDecimal(supplierCredit, 1, 2)}"></strong>
+            supplier credit available — will be auto-applied to your next bill from this supplier.
+        </span>
+    </div>
+
+    <!-- Add payment section — only if not fully paid -->
+    <div th:if="${bill.status != 'PAID'}"
+         x-data="{ open: false, amt: '' }"
+         th:attr="data-balance=${bill.balance}"
+         class="bg-white border border-slate-200 rounded-xl mb-4 overflow-hidden">
+        <button type="button"
+                @click="open = !open"
+                class="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <span>Record Payment</span>
+            <span x-text="open ? '▲' : '▼'" class="text-xs text-slate-400"></span>
+        </button>
+
+        <div x-show="open" x-cloak class="border-t border-slate-100 p-4">
+            <form th:action="@{/supplier-bills/{id}/payments(id=${bill.id})}"
+                  method="post"
+                  th:object="${paymentForm}"
+                  class="space-y-3">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-sm font-medium text-slate-700">Paid Date *</label>
+                        <input th:field="*{paidDate}" type="date" required
+                               th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"
+                               class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-slate-700">Amount (₹) *</label>
+                        <input th:field="*{amount}" type="text" inputmode="decimal"
+                               pattern="[0-9]+(\.[0-9]{1,2})?" required
+                               placeholder="0.00"
+                               x-model="amt"
+                               class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                        <!-- Overpayment warning -->
+                        <div x-show="amt !== '' && parseFloat(amt) > parseFloat($el.closest('[data-balance]').dataset.balance)"
+                             x-cloak
+                             class="mt-1.5 flex items-start gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                            <span class="shrink-0 text-amber-500 mt-0.5">⚠</span>
+                            <span>
+                                Exceeds outstanding balance of
+                                <strong th:text="'₹' + ${#numbers.formatDecimal(bill.balance, 1, 2)}"></strong>.
+                                The extra
+                                <strong x-text="'₹' + (parseFloat(amt) - parseFloat($el.closest('[data-balance]').dataset.balance)).toFixed(2)"></strong>
+                                will be auto-applied to the next unpaid bill from this supplier, or held as credit.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Payment Mode</label>
+                    <select th:field="*{paymentMode}"
+                            class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white">
+                        <option value="">— Select —</option>
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="CHEQUE">Cheque</option>
+                        <option value="BANK_TRANSFER">Bank Transfer</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Reference No</label>
+                    <input th:field="*{referenceNo}" type="text" placeholder="UTR / Cheque no"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Notes</label>
+                    <input th:field="*{notes}" type="text" placeholder="Optional notes"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                </div>
+
+                <button type="submit"
+                        class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 rounded-lg text-sm">
+                    Record Payment
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment history -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-100">
+            <h2 class="font-semibold text-sm">Payment History</h2>
+        </div>
+
+        <div th:if="${#lists.isEmpty(payments)}" class="px-4 py-6 text-center text-sm text-slate-400">
+            No payments recorded yet.
+        </div>
+
+        <table th:if="${!#lists.isEmpty(payments)}" class="w-full text-sm">
+            <thead class="bg-slate-50">
+            <tr>
+                <th class="text-left px-3 py-2 text-xs uppercase tracking-wider text-slate-500">Date</th>
+                <th class="text-right px-3 py-2 text-xs uppercase tracking-wider text-slate-500">Amount</th>
+                <th class="text-left px-3 py-2 text-xs uppercase tracking-wider text-slate-500">Mode</th>
+                <th class="text-left px-3 py-2 text-xs uppercase tracking-wider text-slate-500 hidden sm:table-cell">Reference</th>
+                <th class="text-left px-3 py-2 text-xs uppercase tracking-wider text-slate-500 hidden md:table-cell">Notes</th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+            <tr th:each="p : ${payments}"
+                th:classappend="${p.paymentMode == 'CREDIT'} ? 'bg-sky-50' : ''">
+                <td class="px-3 py-2"
+                    th:text="${#temporals.format(p.paidDate, 'dd MMM yyyy')}"></td>
+                <td class="px-3 py-2 text-right font-medium"
+                    th:classappend="${p.paymentMode == 'CREDIT'} ? 'text-sky-700' : 'text-emerald-700'"
+                    th:text="'₹' + ${#numbers.formatDecimal(p.amount, 1, 2)}"></td>
+                <td class="px-3 py-2" th:switch="${p.paymentMode}">
+                    <span th:case="'CREDIT'"
+                          class="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-medium">Auto-credit</span>
+                    <span th:case="*" class="text-slate-600" th:text="${p.paymentMode ?: '—'}"></span>
+                </td>
+                <td class="px-3 py-2 font-mono text-xs text-slate-500 hidden sm:table-cell"
+                    th:text="${p.referenceNo ?: '—'}"></td>
+                <td class="px-3 py-2 text-slate-500 hidden md:table-cell"
+                    th:text="${p.notes ?: '—'}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

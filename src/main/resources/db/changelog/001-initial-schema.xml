@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-clinic" author="claude">
+        <createTable tableName="clinic">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="name" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="phone" type="VARCHAR(32)"/>
+            <column name="address" type="VARCHAR(512)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-app_user" author="claude">
+        <createTable tableName="app_user">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="clinic_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_user_clinic" references="clinic(id)"/></column>
+            <column name="username" type="VARCHAR(64)"><constraints nullable="false" unique="true"/></column>
+            <column name="password_hash" type="VARCHAR(128)"><constraints nullable="false"/></column>
+            <column name="full_name" type="VARCHAR(128)"><constraints nullable="false"/></column>
+            <column name="role" type="VARCHAR(24)"><constraints nullable="false"/></column>
+            <column name="phone" type="VARCHAR(32)"/>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-patient" author="claude">
+        <createTable tableName="patient">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="clinic_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_patient_clinic" references="clinic(id)"/></column>
+            <column name="name" type="VARCHAR(128)"><constraints nullable="false"/></column>
+            <column name="phone" type="VARCHAR(32)"><constraints nullable="false"/></column>
+            <column name="age" type="INT"/>
+            <column name="gender" type="VARCHAR(16)"/>
+            <column name="address" type="VARCHAR(512)"/>
+            <column name="allergies" type="VARCHAR(512)"/>
+            <column name="notes" type="VARCHAR(1024)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="patient" indexName="idx_patient_phone"><column name="phone"/></createIndex>
+        <createIndex tableName="patient" indexName="idx_patient_name"><column name="name"/></createIndex>
+    </changeSet>
+
+    <changeSet id="001-visit" author="claude">
+        <createTable tableName="visit">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="patient_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_visit_patient" references="patient(id)"/></column>
+            <column name="doctor_id" type="BIGINT"><constraints foreignKeyName="fk_visit_doctor" references="app_user(id)"/></column>
+            <column name="visit_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="diagnosis" type="VARCHAR(1024)"/>
+            <column name="notes" type="VARCHAR(2048)"/>
+            <column name="follow_up_date" type="DATE"/>
+            <column name="prescription_file" type="VARCHAR(512)"/>
+            <column name="prescription_text" type="VARCHAR(4096)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="visit" indexName="idx_visit_patient_date">
+            <column name="patient_id"/>
+            <column name="visit_date"/>
+        </createIndex>
+        <createIndex tableName="visit" indexName="idx_visit_followup"><column name="follow_up_date"/></createIndex>
+    </changeSet>
+
+    <changeSet id="001-supplier" author="claude">
+        <createTable tableName="supplier">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="clinic_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_supplier_clinic" references="clinic(id)"/></column>
+            <column name="name" type="VARCHAR(128)"><constraints nullable="false"/></column>
+            <column name="phone" type="VARCHAR(32)"/>
+            <column name="address" type="VARCHAR(512)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-medicine" author="claude">
+        <createTable tableName="medicine">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="clinic_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_medicine_clinic" references="clinic(id)"/></column>
+            <column name="name" type="VARCHAR(128)"><constraints nullable="false"/></column>
+            <column name="generic_name" type="VARCHAR(128)"/>
+            <column name="form" type="VARCHAR(32)"/>
+            <column name="strength" type="VARCHAR(64)"/>
+            <column name="manufacturer" type="VARCHAR(128)"/>
+            <column name="unit" type="VARCHAR(24)" defaultValue="UNIT"/>
+            <column name="low_stock_threshold" type="INT" defaultValueNumeric="10"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="medicine" indexName="idx_medicine_name"><column name="name"/></createIndex>
+    </changeSet>
+
+    <changeSet id="001-stock_batch" author="claude">
+        <createTable tableName="stock_batch">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="medicine_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_batch_medicine" references="medicine(id)"/></column>
+            <column name="supplier_id" type="BIGINT"><constraints foreignKeyName="fk_batch_supplier" references="supplier(id)"/></column>
+            <column name="batch_number" type="VARCHAR(64)"><constraints nullable="false"/></column>
+            <column name="expiry_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="initial_quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="purchase_price" type="DECIMAL(12,2)"/>
+            <column name="sale_price" type="DECIMAL(12,2)"/>
+            <column name="received_date" type="DATE" defaultValueComputed="CURRENT_DATE"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="stock_batch" indexName="idx_batch_expiry"><column name="expiry_date"/></createIndex>
+        <createIndex tableName="stock_batch" indexName="idx_batch_medicine"><column name="medicine_id"/></createIndex>
+    </changeSet>
+
+    <changeSet id="001-sale" author="claude">
+        <createTable tableName="sale">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="clinic_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_sale_clinic" references="clinic(id)"/></column>
+            <column name="patient_id" type="BIGINT"><constraints foreignKeyName="fk_sale_patient" references="patient(id)"/></column>
+            <column name="visit_id" type="BIGINT"><constraints foreignKeyName="fk_sale_visit" references="visit(id)"/></column>
+            <column name="total_amount" type="DECIMAL(12,2)" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="payment_mode" type="VARCHAR(24)" defaultValue="CASH"/>
+            <column name="created_by" type="BIGINT"><constraints foreignKeyName="fk_sale_user" references="app_user(id)"/></column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="sale" indexName="idx_sale_created"><column name="created_at"/></createIndex>
+    </changeSet>
+
+    <changeSet id="001-sale_item" author="claude">
+        <createTable tableName="sale_item">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="sale_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_saleitem_sale" references="sale(id)"/></column>
+            <column name="stock_batch_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_saleitem_batch" references="stock_batch(id)"/></column>
+            <column name="medicine_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_saleitem_medicine" references="medicine(id)"/></column>
+            <column name="quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="unit_price" type="DECIMAL(12,2)"><constraints nullable="false"/></column>
+            <column name="line_total" type="DECIMAL(12,2)"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-stock_movement" author="claude">
+        <createTable tableName="stock_movement">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="stock_batch_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_mov_batch" references="stock_batch(id)"/></column>
+            <column name="movement_type" type="VARCHAR(24)"><constraints nullable="false"/></column>
+            <column name="quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="reference_id" type="BIGINT"/>
+            <column name="reference_type" type="VARCHAR(32)"/>
+            <column name="notes" type="VARCHAR(256)"/>
+            <column name="created_by" type="BIGINT"><constraints foreignKeyName="fk_mov_user" references="app_user(id)"/></column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

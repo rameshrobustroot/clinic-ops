@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head th:replace="~{fragments/layout :: head(#{settings.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <h1 class="text-xl font-semibold mb-4" th:text="#{settings.title}">Settings</h1>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold" th:text="#{settings.clinic.title}">Clinic</h2>
+            <a sec:authorize="hasRole('OWNER')" href="/settings/clinic" class="text-sm text-primary-600" th:text="#{settings.clinic.edit}">Edit profile →</a>
+        </div>
+        <div class="flex items-start gap-3">
+            <img th:if="${clinic != null and clinic.logoPath != null}" src="/settings/clinic/logo"
+                 alt="Logo" class="w-12 h-12 rounded-lg border border-slate-200 object-contain bg-slate-50"/>
+            <dl class="text-sm space-y-1 flex-1">
+                <div class="flex justify-between"><dt class="text-slate-500">Name</dt><dd class="font-medium" th:text="${clinic != null ? clinic.name : '—'}"></dd></div>
+                <div class="flex justify-between"><dt class="text-slate-500">Phone</dt><dd th:text="${clinic != null ? clinic.phone : '—'}"></dd></div>
+                <div class="flex justify-between"><dt class="text-slate-500">Address</dt><dd class="text-right" th:text="${clinic != null ? clinic.address : '—'}"></dd></div>
+            </dl>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4" sec:authorize="hasRole('OWNER')">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold" th:text="#{settings.doctors.title}">Doctors</h2>
+            <a href="/doctors" class="text-sm text-primary-600" th:text="#{settings.doctors.manage}">Manage doctors →</a>
+        </div>
+        <p class="text-xs text-slate-500" th:text="#{settings.doctors.hint}">
+            Doctors shown in visit dropdowns + prescription PDFs.
+        </p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4" sec:authorize="hasRole('OWNER')">
+        <h2 class="font-semibold mb-1" th:text="#{settings.refs.title}">Clinical reference lists</h2>
+        <p class="text-xs text-slate-500 mb-3" th:text="#{settings.refs.hint}">
+            Controlled vocabularies used on the visit + doctor forms.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <a href="/degrees"
+               class="flex items-center justify-between bg-slate-50 hover:bg-primary-50 border border-slate-200 hover:border-primary-300 rounded-lg px-3 py-2 text-sm">
+                <span>
+                    <span class="block font-medium" th:text="#{settings.refs.degrees}">Degrees</span>
+                    <span class="block text-xs text-slate-500">MBBS, MD, MS, …</span>
+                </span>
+                <span class="text-primary-600">→</span>
+            </a>
+            <a href="/specializations"
+               class="flex items-center justify-between bg-slate-50 hover:bg-primary-50 border border-slate-200 hover:border-primary-300 rounded-lg px-3 py-2 text-sm">
+                <span>
+                    <span class="block font-medium" th:text="#{settings.refs.specializations}">Specializations</span>
+                    <span class="block text-xs text-slate-500">Cardiology, ENT, …</span>
+                </span>
+                <span class="text-primary-600">→</span>
+            </a>
+            <a href="/investigations"
+               class="flex items-center justify-between bg-slate-50 hover:bg-primary-50 border border-slate-200 hover:border-primary-300 rounded-lg px-3 py-2 text-sm">
+                <span>
+                    <span class="block font-medium" th:text="#{settings.refs.investigations}">Investigations</span>
+                    <span class="block text-xs text-slate-500">CBC, ECG, MRI, …</span>
+                </span>
+                <span class="text-primary-600">→</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4" sec:authorize="hasRole('OWNER')">
+        <h2 class="font-semibold mb-2">Backup &amp; Export</h2>
+        <p class="text-xs text-slate-500 mb-3">
+            Download a CSV snapshot of each dataset. Open with Excel / Google Sheets.
+        </p>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+            <a href="/export/patients.csv" class="text-primary-600">⬇ Patients</a>
+            <a href="/export/sales.csv" class="text-primary-600">⬇ Sales</a>
+            <a href="/export/inventory.csv" class="text-primary-600">⬇ Inventory</a>
+            <a href="/export/suppliers.csv" class="text-primary-600">⬇ Suppliers</a>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4" sec:authorize="hasRole('OWNER')">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold">Users</h2>
+            <a href="/users" class="text-sm text-primary-600">Manage →</a>
+        </div>
+        <ul class="divide-y divide-slate-100">
+            <li th:each="u : ${users}" class="py-2 flex items-center justify-between text-sm">
+                <span>
+                    <span class="font-medium" th:text="${u.fullName}"></span>
+                    <span class="text-slate-400" th:text="' · ' + ${u.username}"></span>
+                </span>
+                <span class="text-xs text-slate-500" th:text="${u.role}"></span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold">Theme</h2>
+            <span th:if="${themeSaved}" class="text-xs text-emerald-600">Saved</span>
+        </div>
+        <form th:action="@{/settings/theme}" method="post" class="grid grid-cols-3 gap-2">
+            <label class="cursor-pointer">
+                <input type="radio" name="theme" value="violet" class="sr-only peer"
+                       th:checked="${currentTheme == 'violet'}" onchange="this.form.submit()"/>
+                <div class="rounded-lg border-2 p-3 peer-checked:border-slate-800 border-slate-200 text-center">
+                    <div class="h-8 rounded mb-2" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)"></div>
+                    <div class="text-xs font-medium">Violet</div>
+                </div>
+            </label>
+            <label class="cursor-pointer">
+                <input type="radio" name="theme" value="sky" class="sr-only peer"
+                       th:checked="${currentTheme == 'sky'}" onchange="this.form.submit()"/>
+                <div class="rounded-lg border-2 p-3 peer-checked:border-slate-800 border-slate-200 text-center">
+                    <div class="h-8 rounded mb-2" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)"></div>
+                    <div class="text-xs font-medium">Sky</div>
+                </div>
+            </label>
+            <label class="cursor-pointer">
+                <input type="radio" name="theme" value="indigo" class="sr-only peer"
+                       th:checked="${currentTheme == 'indigo'}" onchange="this.form.submit()"/>
+                <div class="rounded-lg border-2 p-3 peer-checked:border-slate-800 border-slate-200 text-center">
+                    <div class="h-8 rounded mb-2" style="background:linear-gradient(135deg,#6366f1,#4f46e5)"></div>
+                    <div class="text-xs font-medium">Indigo</div>
+                </div>
+            </label>
+        </form>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4">
+        <h2 class="font-semibold mb-2">My account</h2>
+        <a href="/settings/profile" class="block text-sm text-primary-600">Edit my profile (name, phone) →</a>
+        <a href="/settings/password" class="block text-sm text-primary-600 mt-1">Change my password →</a>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+        <h2 class="font-semibold mb-2">Legal</h2>
+        <p class="text-xs text-slate-500 mb-2"
+           th:if="${clinic != null and clinic.termsAcceptedAt != null}">
+            Terms accepted on
+            <span th:text="${#temporals.format(clinic.termsAcceptedAt, 'dd MMM yyyy')}"></span>
+            (version <span class="font-mono" th:text="${clinic.termsVersion}"></span>).
+        </p>
+        <p class="text-xs text-amber-700 mb-2"
+           th:if="${clinic != null and clinic.termsAcceptedAt == null}">
+            No on-record acceptance — this clinic existed before the terms feature was added.
+        </p>
+        <div class="flex flex-wrap gap-3 text-sm">
+            <a href="/terms" target="_blank" class="text-primary-600">View current Terms, Privacy &amp; Disclaimer →</a>
+            <a sec:authorize="hasRole('PLATFORM_ADMIN')" href="/platform/terms"
+               class="text-primary-600">Manage terms versions →</a>
+        </div>
+        <p sec:authorize="hasRole('PLATFORM_ADMIN')"
+           class="mt-2 text-xs text-slate-400">
+            You are the platform admin — you author terms; clinics accept them.
+        </p>
+    </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Audit-preserving soft delete on Rx and Investigation rows so editing a visit
+         doesn't destroy clinical history. -->
+
+    <changeSet id="015-prescription-item-active" author="claude">
+        <addColumn tableName="prescription_item">
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="prescription_item" indexName="idx_rxitem_visit_active">
+            <column name="visit_id"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="015-investigation-item-active" author="claude">
+        <addColumn tableName="investigation_item">
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="investigation_item" indexName="idx_inv_visit_active">
+            <column name="visit_id"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

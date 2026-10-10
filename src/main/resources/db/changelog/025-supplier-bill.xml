@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="025-supplier-bill-table" author="claude">
+        <sql>
+            CREATE TABLE supplier_bill (
+                id BIGSERIAL PRIMARY KEY,
+                clinic_id BIGINT NOT NULL REFERENCES clinic(id),
+                supplier_id BIGINT REFERENCES supplier(id),
+                bill_number VARCHAR(100),
+                bill_date DATE NOT NULL,
+                due_date DATE,
+                total_amount NUMERIC(12,2) NOT NULL,
+                paid_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'UNPAID',
+                notes TEXT,
+                attachment_path VARCHAR(512),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+        </sql>
+    </changeSet>
+
+    <changeSet id="025-supplier-bill-index-clinic" author="claude">
+        <sql>CREATE INDEX ix_supplier_bill_clinic ON supplier_bill(clinic_id)</sql>
+    </changeSet>
+
+    <changeSet id="025-supplier-bill-index-due" author="claude">
+        <sql>CREATE INDEX ix_supplier_bill_due ON supplier_bill(due_date)</sql>
+    </changeSet>
+
+</databaseChangeLog>

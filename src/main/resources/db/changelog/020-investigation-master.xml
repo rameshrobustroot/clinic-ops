@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Master list for commonly-ordered investigations / lab tests. Clinic-scoped,
+         seeded with Indian-clinic defaults. The visit form pulls from this list and
+         auto-adds any new name a doctor types. -->
+
+    <changeSet id="020-create-medical-investigation" author="claude">
+        <createTable tableName="medical_investigation">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="clinic_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_invmaster_clinic" references="clinic(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="medical_investigation" indexName="ux_invmaster_clinic_name" unique="true">
+            <column name="clinic_id"/>
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="020-seed-investigations" author="claude">
+        <sql splitStatements="true" stripComments="true">
+            INSERT INTO medical_investigation (clinic_id, name)
+            SELECT c.id, i.name FROM clinic c
+            CROSS JOIN (
+                -- Hematology
+                SELECT 'CBC' AS name UNION ALL
+                SELECT 'ESR' UNION ALL
+                SELECT 'Peripheral smear' UNION ALL
+                SELECT 'Platelet count' UNION ALL
+                SELECT 'Reticulocyte count' UNION ALL
+                -- Biochemistry
+                SELECT 'FBS' UNION ALL
+                SELECT 'PPBS' UNION ALL
+                SELECT 'RBS' UNION ALL
+                SELECT 'HbA1c' UNION ALL
+                SELECT 'Lipid profile' UNION ALL
+                SELECT 'LFT' UNION ALL
+                SELECT 'KFT/RFT' UNION ALL
+                SELECT 'Serum electrolytes' UNION ALL
+                SELECT 'Serum uric acid' UNION ALL
+                SELECT 'Serum calcium' UNION ALL
+                SELECT 'Serum phosphorus' UNION ALL
+                SELECT 'Vitamin D' UNION ALL
+                SELECT 'Vitamin B12' UNION ALL
+                SELECT 'Iron studies' UNION ALL
+                SELECT 'Ferritin' UNION ALL
+                -- Endocrine
+                SELECT 'TSH' UNION ALL
+                SELECT 'T3' UNION ALL
+                SELECT 'T4' UNION ALL
+                SELECT 'Free T3 / Free T4' UNION ALL
+                SELECT 'Cortisol' UNION ALL
+                SELECT 'PSA' UNION ALL
+                -- Cardiac
+                SELECT 'Troponin' UNION ALL
+                SELECT 'CK-MB' UNION ALL
+                SELECT 'NT-proBNP' UNION ALL
+                SELECT 'D-dimer' UNION ALL
+                -- Coag
+                SELECT 'PT/INR' UNION ALL
+                SELECT 'APTT' UNION ALL
+                -- Urine
+                SELECT 'Urine routine' UNION ALL
+                SELECT 'Urine microalbumin' UNION ALL
+                SELECT 'Urine culture' UNION ALL
+                -- Stool
+                SELECT 'Stool routine' UNION ALL
+                SELECT 'Stool occult blood' UNION ALL
+                -- Microbiology
+                SELECT 'Blood culture' UNION ALL
+                SELECT 'Throat swab culture' UNION ALL
+                SELECT 'Sputum culture' UNION ALL
+                SELECT 'Sputum AFB' UNION ALL
+                -- Serology
+                SELECT 'HIV' UNION ALL
+                SELECT 'HBsAg' UNION ALL
+                SELECT 'HCV' UNION ALL
+                SELECT 'Dengue NS1 / IgM / IgG' UNION ALL
+                SELECT 'Malaria smear' UNION ALL
+                SELECT 'Widal' UNION ALL
+                SELECT 'CRP' UNION ALL
+                SELECT 'RA factor' UNION ALL
+                SELECT 'ANA' UNION ALL
+                -- Imaging
+                SELECT 'X-ray Chest' UNION ALL
+                SELECT 'X-ray Abdomen' UNION ALL
+                SELECT 'X-ray Spine' UNION ALL
+                SELECT 'X-ray KUB' UNION ALL
+                SELECT 'USG Abdomen' UNION ALL
+                SELECT 'USG Pelvis' UNION ALL
+                SELECT 'USG Whole Abdomen' UNION ALL
+                SELECT 'Doppler' UNION ALL
+                SELECT 'CT Brain' UNION ALL
+                SELECT 'CT Chest' UNION ALL
+                SELECT 'CT Abdomen' UNION ALL
+                SELECT 'MRI Brain' UNION ALL
+                SELECT 'MRI Spine' UNION ALL
+                SELECT 'Mammography' UNION ALL
+                -- Cardiology
+                SELECT 'ECG' UNION ALL
+                SELECT '2D Echo' UNION ALL
+                SELECT 'TMT' UNION ALL
+                SELECT 'Holter monitor' UNION ALL
+                -- Pulmonary
+                SELECT 'PFT / Spirometry' UNION ALL
+                SELECT 'ABG' UNION ALL
+                -- Other
+                SELECT 'EEG' UNION ALL
+                SELECT 'NCV / EMG' UNION ALL
+                SELECT 'Endoscopy (Upper GI)' UNION ALL
+                SELECT 'Colonoscopy' UNION ALL
+                SELECT 'Biopsy' UNION ALL
+                SELECT 'Pap smear' UNION ALL
+                SELECT 'PAP &amp; HPV' UNION ALL
+                SELECT 'Bone densitometry (DEXA)' UNION ALL
+                SELECT 'Audiometry' UNION ALL
+                SELECT 'Eye refraction' UNION ALL
+                SELECT 'Fundus exam'
+            ) i
+            WHERE NOT EXISTS (
+                SELECT 1 FROM medical_investigation mi
+                WHERE mi.clinic_id = c.id AND LOWER(mi.name) = LOWER(i.name)
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

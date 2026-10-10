@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head th:replace="~{fragments/layout :: head(#{inventory.list.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'inventory')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <h1 class="text-xl font-semibold" th:text="#{inventory.list.title}">Inventory</h1>
+        <div class="flex gap-2" sec:authorize="hasAnyRole('OWNER','PHARMACIST')">
+            <a href="/procurement" class="text-sm text-primary-600 self-center" th:text="#{inventory.list.order_list}">Order list →</a>
+            <a href="/inventory/medicines/new" class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium"
+               th:text="#{inventory.list.new_medicine}">+ Medicine</a>
+        </div>
+    </div>
+
+    <div class="relative mb-3">
+        <input type="search" name="q" th:value="${q}" placeholder="Search medicines"
+               class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+               hx-get="/inventory/search" hx-trigger="keyup changed delay:250ms, search" hx-target="#results"/>
+        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    </div>
+
+    <div id="results" th:fragment="results">
+    <div th:if="${#lists.isEmpty(medicines)}" class="text-center text-slate-500 py-12">
+        <p class="mb-2">No medicines yet.</p>
+        <a href="/inventory/medicines/new" class="text-primary-600 font-medium">Add your first medicine →</a>
+    </div>
+
+    <ul class="space-y-2">
+        <li th:each="m : ${medicines}">
+            <a th:href="@{/inventory/medicines/{id}(id=${m.id})}"
+               class="block bg-white border border-slate-200 rounded-xl p-3 hover:border-primary-400">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-medium" th:text="${m.name}"></div>
+                        <div class="text-xs text-slate-500">
+                            <span th:if="${m.strength}" th:text="${m.strength}"></span>
+                            <span th:if="${m.form}" th:text="' · ' + ${m.form}"></span>
+                            <span th:if="${m.manufacturer}" th:text="' · ' + ${m.manufacturer}"></span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-semibold" th:text="${totals[m.id]}"></div>
+                        <div class="text-xs"
+                             th:classappend="${expiryClass[m.id]}"
+                             th:text="${expiryLabel[m.id]}"></div>
+                    </div>
+                </div>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Pagination -->
+    <div th:if="${totalPages != null and totalPages > 1}"
+         class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-sm">
+        <a th:if="${hasPrev}" th:href="@{/inventory(q=${q}, page=${pageNo - 1})}"
+           class="text-primary-600">← Previous</a>
+        <span th:unless="${hasPrev}" class="text-slate-300">← Previous</span>
+        <span class="text-xs text-slate-500"
+              th:text="'Page ' + (${pageNo} + 1) + ' of ' + ${totalPages} + ' · ' + ${totalElements} + ' total'"></span>
+        <a th:if="${hasNext}" th:href="@{/inventory(q=${q}, page=${pageNo + 1})}"
+           class="text-primary-600">Next →</a>
+        <span th:unless="${hasNext}" class="text-slate-300">Next →</span>
+    </div>
+    </div>
+</section>
+</body>
+</html>

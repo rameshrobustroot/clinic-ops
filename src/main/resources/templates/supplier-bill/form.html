@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('New Supplier Bill')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'purchases')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <!-- Back link returns to filtered list when arriving from a supplier-scoped view -->
+        <a th:if="${backSupplierId != null}"
+           th:href="@{/supplier-bills(supplierId=${backSupplierId})}"
+           class="text-primary-600">←</a>
+        <a th:unless="${backSupplierId != null}"
+           href="/supplier-bills" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">New Supplier Bill</h1>
+    </div>
+
+    <form th:action="@{/supplier-bills}" method="post"
+          th:object="${form}"
+          enctype="multipart/form-data"
+          class="space-y-4">
+
+        <!-- Confirmation banner after returning from the "New Supplier" flow -->
+        <div th:if="${newSupplierName != null}"
+             class="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>Supplier <strong th:text="${newSupplierName}"></strong> added and selected.</span>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Bill Details</h2>
+
+            <div>
+                <!-- Label row: "Supplier" on the left, "+ New Supplier" shortcut on the right -->
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-sm font-medium text-slate-700">Supplier</label>
+                    <a th:href="@{/suppliers/new(returnTo='/supplier-bills/new')}"
+                       class="text-xs font-medium text-primary-600 hover:text-primary-800 flex items-center gap-0.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        New Supplier
+                    </a>
+                </div>
+                <select th:field="*{supplierId}"
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white">
+                    <option value="">— No supplier —</option>
+                    <option th:each="s : ${suppliers}"
+                            th:value="${s.id}"
+                            th:text="${s.name}"></option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-700">Bill Number</label>
+                <input th:field="*{billNumber}" type="text" placeholder="INV-2024-001"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Bill Date *</label>
+                    <input th:field="*{billDate}" type="date" required
+                           th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Due Date</label>
+                    <input th:field="*{dueDate}" type="date"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-700">Total Amount (₹) *</label>
+                <input th:field="*{totalAmount}" type="text" inputmode="decimal"
+                       pattern="[0-9]+(\.[0-9]{1,2})?" required
+                       placeholder="0.00"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Notes &amp; Attachment</h2>
+
+            <div>
+                <label class="text-sm font-medium text-slate-700">Notes</label>
+                <textarea th:field="*{notes}" rows="2" placeholder="Payment terms, vendor reference…"
+                          class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"></textarea>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-700">Attach Bill</label>
+                <input type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png"
+                       class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"/>
+                <p class="text-xs text-slate-400 mt-1">PDF, JPG, or PNG. Max recommended: 5 MB.</p>
+            </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Save Bill
+        </button>
+    </form>
+</section>
+</body>
+</html>

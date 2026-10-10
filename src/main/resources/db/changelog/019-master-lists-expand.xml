@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Expand the seed catalogue so doctors find the value they need on first try.
+         Each row uses NOT EXISTS so re-running is safe and we never collide with
+         a name an admin may have already added by hand. -->
+
+    <changeSet id="019-seed-more-degrees" author="claude">
+        <sql splitStatements="true" stripComments="true">
+            INSERT INTO medical_degree (clinic_id, name)
+            SELECT c.id, d.name FROM clinic c
+            CROSS JOIN (
+                SELECT 'MBChB'   AS name UNION ALL SELECT 'MMSc'     UNION ALL SELECT 'PhD' UNION ALL
+                SELECT 'DSc'            UNION ALL SELECT 'MPH'       UNION ALL SELECT 'DGO' UNION ALL
+                SELECT 'DCH'            UNION ALL SELECT 'DA'        UNION ALL SELECT 'DPM' UNION ALL
+                SELECT 'DLO'            UNION ALL SELECT 'DOMS'      UNION ALL SELECT 'DDVL' UNION ALL
+                SELECT 'DTCD'           UNION ALL SELECT 'DDPH'      UNION ALL SELECT 'DipDiab' UNION ALL
+                SELECT 'DipDerm'        UNION ALL SELECT 'DNB Family Medicine' UNION ALL SELECT 'FNB' UNION ALL
+                SELECT 'FRACP'          UNION ALL SELECT 'FCCP'      UNION ALL SELECT 'MNAMS'
+            ) d
+            WHERE NOT EXISTS (
+                SELECT 1 FROM medical_degree md
+                WHERE md.clinic_id = c.id AND LOWER(md.name) = LOWER(d.name)
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="019-seed-more-specializations" author="claude">
+        <sql splitStatements="true" stripComments="true">
+            INSERT INTO medical_specialization (clinic_id, name)
+            SELECT c.id, s.name FROM clinic c
+            CROSS JOIN (
+                SELECT 'Internal Medicine'           AS name UNION ALL
+                SELECT 'Emergency Medicine'          UNION ALL
+                SELECT 'Critical Care Medicine'      UNION ALL
+                SELECT 'Neonatology'                 UNION ALL
+                SELECT 'Adolescent Medicine'         UNION ALL
+                SELECT 'Cardiothoracic Surgery'      UNION ALL
+                SELECT 'Cardiac Anaesthesia'         UNION ALL
+                SELECT 'Orthopedic Surgery'          UNION ALL
+                SELECT 'Spine Surgery'               UNION ALL
+                SELECT 'Joint Replacement'           UNION ALL
+                SELECT 'Hand Surgery'                UNION ALL
+                SELECT 'Cosmetology'                 UNION ALL
+                SELECT 'Aesthetic Medicine'          UNION ALL
+                SELECT 'Trichology'                  UNION ALL
+                SELECT 'Reproductive Medicine'       UNION ALL
+                SELECT 'Maternal-Fetal Medicine'     UNION ALL
+                SELECT 'Child Psychiatry'            UNION ALL
+                SELECT 'Addiction Medicine'          UNION ALL
+                SELECT 'Geriatric Psychiatry'        UNION ALL
+                SELECT 'Head &amp; Neck Surgery'         UNION ALL
+                SELECT 'Retina Surgery'              UNION ALL
+                SELECT 'Cornea &amp; Refractive Surgery' UNION ALL
+                SELECT 'Interventional Radiology'    UNION ALL
+                SELECT 'Nuclear Medicine'            UNION ALL
+                SELECT 'Hematopathology'             UNION ALL
+                SELECT 'Microbiology'                UNION ALL
+                SELECT 'Pain Medicine'               UNION ALL
+                SELECT 'Andrology'                   UNION ALL
+                SELECT 'Medical Oncology'            UNION ALL
+                SELECT 'Surgical Oncology'           UNION ALL
+                SELECT 'Radiation Oncology'          UNION ALL
+                SELECT 'Hemato-Oncology'             UNION ALL
+                SELECT 'Diabetology'                 UNION ALL
+                SELECT 'Hepatology'                  UNION ALL
+                SELECT 'Gastrointestinal Surgery'    UNION ALL
+                SELECT 'Neurosurgery'                UNION ALL
+                SELECT 'Sleep Medicine'              UNION ALL
+                SELECT 'Oral &amp; Maxillofacial Surgery' UNION ALL
+                SELECT 'Orthodontics'                UNION ALL
+                SELECT 'Periodontics'                UNION ALL
+                SELECT 'Endodontics'                 UNION ALL
+                SELECT 'Prosthodontics'              UNION ALL
+                SELECT 'Pediatric Dentistry'         UNION ALL
+                SELECT 'Unani'                       UNION ALL
+                SELECT 'Siddha'                      UNION ALL
+                SELECT 'Yoga &amp; Naturopathy'          UNION ALL
+                SELECT 'Plastic Surgery'             UNION ALL
+                SELECT 'Vascular Surgery'            UNION ALL
+                SELECT 'Pediatric Surgery'           UNION ALL
+                SELECT 'Rheumatology'                UNION ALL
+                SELECT 'Allergy &amp; Immunology'        UNION ALL
+                SELECT 'Physical Medicine &amp; Rehabilitation' UNION ALL
+                SELECT 'Sports Medicine'             UNION ALL
+                SELECT 'Occupational Medicine'       UNION ALL
+                SELECT 'Community Medicine'          UNION ALL
+                SELECT 'Public Health'               UNION ALL
+                SELECT 'Forensic Medicine'           UNION ALL
+                SELECT 'Clinical Pharmacology'       UNION ALL
+                SELECT 'Genetic Medicine'            UNION ALL
+                SELECT 'Palliative Medicine'         UNION ALL
+                SELECT 'Transfusion Medicine'        UNION ALL
+                SELECT 'Hematology'                  UNION ALL
+                SELECT 'Geriatrics'                  UNION ALL
+                SELECT 'Tropical Medicine'           UNION ALL
+                SELECT 'Infectious Diseases'         UNION ALL
+                SELECT 'Sexual Medicine'             UNION ALL
+                SELECT 'Pediatric Cardiology'        UNION ALL
+                SELECT 'Pediatric Neurology'         UNION ALL
+                SELECT 'Pediatric Oncology'          UNION ALL
+                SELECT 'Pediatric Endocrinology'     UNION ALL
+                SELECT 'Pediatric Gastroenterology'  UNION ALL
+                SELECT 'Pediatric Nephrology'        UNION ALL
+                SELECT 'Pediatric Pulmonology'       UNION ALL
+                SELECT 'Pediatric Critical Care'     UNION ALL
+                SELECT 'Veterinary Medicine'         UNION ALL
+                SELECT 'Audiology'                   UNION ALL
+                SELECT 'Speech Therapy'              UNION ALL
+                SELECT 'Physiotherapy'               UNION ALL
+                SELECT 'Optometry'                   UNION ALL
+                SELECT 'Nutrition &amp; Dietetics'
+            ) s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM medical_specialization ms
+                WHERE ms.clinic_id = c.id AND LOWER(ms.name) = LOWER(s.name)
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

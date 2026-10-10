@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Audit trail of which version of the Terms / Privacy a clinic's owner accepted
+         at registration. Lets us prove acceptance later and prompt re-acceptance if
+         the document is updated. -->
+
+    <changeSet id="021-clinic-terms-acceptance" author="claude">
+        <addColumn tableName="clinic">
+            <column name="terms_version" type="VARCHAR(32)"/>
+            <column name="terms_accepted_at" type="TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Doctor')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/doctors" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold"
+            th:text="${doctor.id != null} ? 'Edit Doctor' : 'New Doctor'"></h1>
+    </div>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+
+    <form th:action="${doctor.id != null} ? @{/doctors/{id}(id=${doctor.id})} : @{/doctors}"
+          th:object="${doctor}" method="post"
+          class="space-y-4 bg-white rounded-xl border border-slate-200 p-4">
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Full name *</label>
+            <input th:field="*{fullName}" required autofocus placeholder="Kalpana Ramesh"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p class="text-xs text-slate-400 mt-1">No need to type "Dr" — it's added automatically on prescriptions.</p>
+        </div>
+
+        <!-- Qualification — multi-select chip picker with searchable dropdown -->
+        <div x-data="degreePicker()" x-init="init($el)"
+             th:data-initial="${doctor.qualification != null ? doctor.qualification : ''}"
+             th:data-master="${masterDegreesJson}">
+            <label class="text-sm font-medium text-slate-700">Qualification</label>
+            <input type="hidden" name="qualification" :value="selected.join(', ')"/>
+
+            <!-- Selected chips -->
+            <div class="mt-1 flex flex-wrap gap-1.5 min-h-[34px] p-2 bg-slate-50 rounded-lg border border-slate-200">
+                <template x-for="(deg, idx) in selected" :key="idx">
+                    <span class="inline-flex items-center gap-1 bg-primary-100 text-primary-800 px-2 py-0.5 rounded text-xs">
+                        <span x-text="deg"></span>
+                        <button type="button" @click="remove(idx)"
+                                class="text-primary-700 hover:text-red-600 leading-none text-sm"
+                                title="Remove">×</button>
+                    </span>
+                </template>
+                <span x-show="selected.length === 0" class="text-xs text-slate-400 italic">No degrees added yet.</span>
+            </div>
+
+            <!-- Searchable picker -->
+            <div class="relative mt-1.5" @click.away="open = false">
+                <input type="text" x-model="draft" @focus="open = true"
+                       @keydown.enter.prevent="commit()"
+                       @keydown.escape="open = false"
+                       placeholder="Search or type a new degree…"
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                <ul x-show="open" x-cloak
+                    class="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow max-h-56 overflow-y-auto">
+                    <template x-for="m in filtered" :key="m">
+                        <li>
+                            <button type="button" @click="pick(m)"
+                                    class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 border-b border-slate-100 last:border-0"
+                                    x-text="m"></button>
+                        </li>
+                    </template>
+                    <li x-show="draft.trim() &amp;&amp; !exactMatch()">
+                        <button type="button" @click="commit()"
+                                class="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 text-amber-700">
+                            + Add "<span x-text="draft.trim()"></span>" as new
+                        </button>
+                    </li>
+                    <li x-show="filtered.length === 0 &amp;&amp; !draft.trim()"
+                        class="px-3 py-2 text-sm text-slate-400">All degrees already added.</li>
+                </ul>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+                Pick multiple. New values join the
+                <a href="/degrees" class="underline">master list</a> automatically.
+            </p>
+        </div>
+
+        <!-- Specialization — single-select searchable picker -->
+        <div x-data="specPicker()" x-init="init($el)"
+             th:data-initial="${doctor.specialization != null ? doctor.specialization : ''}"
+             th:data-master="${masterSpecializationsJson}">
+            <label class="text-sm font-medium text-slate-700">Specialization</label>
+            <input type="hidden" name="specialization" :value="picked"/>
+
+            <!-- Picked state -->
+            <div x-show="picked" class="mt-1 flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-3 py-2.5">
+                <span class="text-sm" x-text="picked"></span>
+                <button type="button" @click="clear()" class="text-xs text-slate-500 underline">change</button>
+            </div>
+
+            <!-- Picker -->
+            <div x-show="!picked" class="relative mt-1" @click.away="open = false">
+                <input type="text" x-model="draft" @focus="open = true"
+                       @keydown.enter.prevent="commit()"
+                       @keydown.escape="open = false"
+                       placeholder="Search or type a new specialization…"
+                       class="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                <ul x-show="open" x-cloak
+                    class="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow max-h-56 overflow-y-auto">
+                    <template x-for="m in filtered" :key="m">
+                        <li>
+                            <button type="button" @click="pick(m)"
+                                    class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 border-b border-slate-100 last:border-0"
+                                    x-text="m"></button>
+                        </li>
+                    </template>
+                    <li x-show="draft.trim() &amp;&amp; !exactMatch()">
+                        <button type="button" @click="commit()"
+                                class="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 text-amber-700">
+                            + Use "<span x-text="draft.trim()"></span>" as new
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+                New values auto-add to the
+                <a href="/specializations" class="underline">master list</a>.
+            </p>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Medical registration no.</label>
+            <input th:field="*{registrationNo}" placeholder="e.g. KMC-44521"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p class="text-xs text-slate-400 mt-1">Printed on prescription PDFs alongside the signature.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+                <label class="text-sm font-medium text-slate-700">Phone</label>
+                <input th:field="*{phone}" type="tel" inputmode="numeric"
+                       pattern="^[6-9][0-9]{9}$" maxlength="10" placeholder="9876543210"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Email</label>
+                <input th:field="*{email}" type="email" placeholder="doctor@clinic.example"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+        </div>
+
+        <div th:if="${doctor.userId != null}"
+             class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
+            🔗 This doctor is linked to a clinic login. Profile info shown here is what appears on
+            prescription PDFs, regardless of what's stored on the linked user account.
+        </div>
+
+        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Save Doctor
+        </button>
+    </form>
+
+<script>
+    // ----- Multi-select with chips (Qualification) -----
+    function degreePicker() {
+        return {
+            master: [],
+            selected: [],
+            draft: '',
+            open: false,
+            init(el) {
+                try { this.master = JSON.parse(el.dataset.master || '[]'); } catch (e) { this.master = []; }
+                const raw = el.dataset.initial || '';
+                if (raw.trim()) {
+                    this.selected = raw.split(',').map(s => s.trim()).filter(s => s.length);
+                }
+                // Flush partial draft on form submit so users don't lose half-typed values.
+                const form = el.closest('form');
+                if (form) form.addEventListener('submit', () => { if (this.draft.trim()) this.commit(); });
+            },
+            get filtered() {
+                const q = this.draft.trim().toLowerCase();
+                return this.master.filter(m =>
+                    !this.selected.some(s => s.toLowerCase() === m.toLowerCase()) &&
+                    (q === '' || m.toLowerCase().includes(q))
+                );
+            },
+            exactMatch() {
+                const q = this.draft.trim().toLowerCase();
+                return q && this.master.some(m => m.toLowerCase() === q);
+            },
+            pick(value) {
+                if (!this.selected.some(s => s.toLowerCase() === value.toLowerCase())) {
+                    this.selected.push(value);
+                }
+                this.draft = '';
+                // Keep dropdown open so the user can pick more
+            },
+            commit() {
+                const v = this.draft.trim();
+                if (!v) return;
+                this.pick(v);
+            },
+            remove(i) { this.selected.splice(i, 1); }
+        };
+    }
+
+    // ----- Single-select with searchable dropdown (Specialization) -----
+    function specPicker() {
+        return {
+            master: [],
+            picked: '',
+            draft: '',
+            open: false,
+            init(el) {
+                try { this.master = JSON.parse(el.dataset.master || '[]'); } catch (e) { this.master = []; }
+                this.picked = (el.dataset.initial || '').trim();
+                const form = el.closest('form');
+                if (form) form.addEventListener('submit', () => { if (!this.picked && this.draft.trim()) this.commit(); });
+            },
+            get filtered() {
+                const q = this.draft.trim().toLowerCase();
+                return q === '' ? this.master
+                                : this.master.filter(m => m.toLowerCase().includes(q));
+            },
+            exactMatch() {
+                const q = this.draft.trim().toLowerCase();
+                return q && this.master.some(m => m.toLowerCase() === q);
+            },
+            pick(value) {
+                this.picked = value;
+                this.draft = '';
+                this.open = false;
+            },
+            commit() {
+                const v = this.draft.trim();
+                if (v) this.pick(v);
+            },
+            clear() { this.picked = ''; this.draft = ''; }
+        };
+    }
+</script>
+</section>
+</body>
+</html>

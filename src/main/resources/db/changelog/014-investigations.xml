@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="014-investigation-item" author="claude">
+        <createTable tableName="investigation_item">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="clinic_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_inv_clinic" references="clinic(id)"/></column>
+            <column name="visit_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_inv_visit" references="visit(id)"/></column>
+            <column name="line_no" type="INT" defaultValueNumeric="1"><constraints nullable="false"/></column>
+            <column name="name" type="VARCHAR(128)"><constraints nullable="false"/></column>
+            <column name="instructions" type="VARCHAR(256)"/>
+            <column name="status" type="VARCHAR(16)" defaultValue="PENDING"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="investigation_item" indexName="idx_inv_visit"><column name="visit_id"/></createIndex>
+        <createIndex tableName="investigation_item" indexName="idx_inv_clinic_status">
+            <column name="clinic_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

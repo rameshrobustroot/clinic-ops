@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Book Appointment')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'schedule')}">
+<section>
+
+    <div class="flex items-center gap-3 mb-4">
+        <a th:href="@{/appointments(date=${backDate})}" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">Book Appointment</h1>
+    </div>
+
+    <!--
+      canBook: starts true; set to false when HTMX loads a slot section that
+      shows "not available on this day" (detected via #slot-unavailable element).
+      The submit button is disabled while canBook is false.
+    -->
+    <form th:action="@{/appointments}" method="post" th:object="${form}"
+          x-data="{
+              useExisting: true,
+              canBook: true,
+
+              /* ── Patient search combobox ─────────────────────────────── */
+              patQuery:   '',
+              patResults: [],
+              patSelected: null,
+              patId:      '',
+              patOpen:    false,
+              patLoading: false,
+
+              async searchPat() {
+                  if (!this.patQuery.trim()) {
+                      this.patResults = [];
+                      this.patOpen = false;
+                      return;
+                  }
+                  this.patLoading = true;
+                  try {
+                      const r = await fetch('/patients/search.json?q=' + encodeURIComponent(this.patQuery));
+                      this.patResults = await r.json();
+                      this.patOpen = this.patResults.length > 0;
+                  } catch (e) {
+                      this.patResults = [];
+                  } finally {
+                      this.patLoading = false;
+                  }
+              },
+
+              pickPat(p) {
+                  this.patSelected = p;
+                  this.patId      = p.id;
+                  this.patQuery   = p.name;
+                  this.patOpen    = false;
+              },
+
+              clearPat() {
+                  this.patSelected = null;
+                  this.patId      = '';
+                  this.patQuery   = '';
+                  this.patResults = [];
+                  this.patOpen    = false;
+              },
+
+              switchToWalkin() {
+                  this.useExisting = false;
+                  this.clearPat();
+              }
+          }"
+          class="space-y-4">
+
+        <!-- ── Patient ──────────────────────────────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Patient</h2>
+
+            <div class="flex gap-2 text-sm">
+                <button type="button" @click="useExisting = true"
+                        class="flex-1 py-2 rounded-lg font-medium border transition-colors"
+                        :class="useExisting ? 'bg-primary-600 text-white border-primary-600' : 'border-slate-300 text-slate-600 hover:bg-slate-50'">
+                    Existing Patient
+                </button>
+                <button type="button" @click="switchToWalkin()"
+                        class="flex-1 py-2 rounded-lg font-medium border transition-colors"
+                        :class="!useExisting ? 'bg-primary-600 text-white border-primary-600' : 'border-slate-300 text-slate-600 hover:bg-slate-50'">
+                    Walk-in / New
+                </button>
+            </div>
+
+            <div x-show="useExisting">
+                <label class="text-sm font-medium text-slate-700">Search Patient</label>
+
+                <!-- Hidden input carries the resolved patient ID on submit -->
+                <input type="hidden" name="patientId" :value="patId"/>
+
+                <div class="relative mt-1">
+                    <input type="text"
+                           x-model="patQuery"
+                           @input.debounce.250ms="searchPat()"
+                           @keydown.escape="patOpen = false"
+                           @keydown.arrow-down.prevent="$refs.patDrop?.querySelector('button')?.focus()"
+                           placeholder="Search by name, phone or patient ID…"
+                           autocomplete="off"
+                           class="w-full pl-9 pr-8 py-2.5 rounded-lg border border-slate-300
+                                  focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+
+                    <!-- Search icon -->
+                    <svg class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+
+                    <!-- Loading spinner -->
+                    <svg x-show="patLoading"
+                         class="animate-spin w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-primary-500"
+                         fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+
+                    <!-- Results dropdown -->
+                    <div x-show="patOpen"
+                         x-ref="patDrop"
+                         @click.outside="patOpen = false"
+                         class="absolute z-30 mt-1 w-full bg-white rounded-xl border border-slate-200
+                                shadow-lg max-h-56 overflow-y-auto">
+                        <template x-for="p in patResults" :key="p.id">
+                            <button type="button"
+                                    @click="pickPat(p)"
+                                    class="w-full text-left px-3 py-2.5 hover:bg-primary-50
+                                           border-b border-slate-100 last:border-0 focus:outline-none focus:bg-primary-50">
+                                <div class="text-sm font-medium text-slate-800" x-text="p.name"></div>
+                                <div class="text-xs text-slate-500 mt-0.5">
+                                    <span x-text="p.phone"></span>
+                                    <span x-show="p.mrn" x-text="' · ' + p.mrn" class="font-mono"></span>
+                                    <span x-show="p.age" x-text="' · ' + p.age + 'y'"></span>
+                                    <span x-show="p.gender" x-text="' ' + p.gender"></span>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Selected patient chip -->
+                <div x-show="patSelected"
+                     class="mt-2 flex items-center gap-2 bg-primary-50 border border-primary-200
+                            rounded-lg px-3 py-2">
+                    <svg class="w-4 h-4 text-primary-500 shrink-0" fill="none" stroke="currentColor"
+                         viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <div class="flex-1 min-w-0">
+                        <span class="text-sm font-medium text-primary-800" x-text="patSelected?.name"></span>
+                        <span class="text-xs text-primary-600 ml-2" x-text="patSelected?.phone"></span>
+                        <span x-show="patSelected?.mrn"
+                              class="text-xs text-primary-500 font-mono ml-1"
+                              x-text="'· ' + patSelected?.mrn"></span>
+                    </div>
+                    <button type="button" @click="clearPat()"
+                            class="shrink-0 text-primary-400 hover:text-red-500 text-lg leading-none">×</button>
+                </div>
+
+                <p class="mt-1 text-xs text-slate-400">
+                    No results? Use <strong>Walk-in / New</strong> to book without a patient record.
+                </p>
+            </div>
+
+            <div x-show="!useExisting" class="space-y-3">
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Name *</label>
+                    <input th:field="*{patientName}" type="text" placeholder="Patient name"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Phone</label>
+                    <input th:field="*{patientPhone}" type="tel" inputmode="numeric"
+                           pattern="^[6-9][0-9]{9}$" maxlength="10" placeholder="10-digit mobile"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Slot ──────────────────────────────────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Slot</h2>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Date *</label>
+                    <!--
+                      hx-on::before-request: clear any stale slot selection the instant
+                      the user changes the date, before HTMX fires and before any form
+                      submit could capture an old appointmentTime value.
+                    -->
+                    <input id="apptDate" th:field="*{appointmentDate}" type="date" required
+                           hx-get="/appointments/slots-fragment"
+                           hx-include="#doctorSelect"
+                           hx-target="#slot-section"
+                           hx-trigger="change"
+                           hx-indicator="#slot-loading"
+                           hx-on::before-request="document.querySelectorAll('#slot-section [name=appointmentTime]').forEach(function(r){r.checked=false})"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Doctor</label>
+                    <select id="doctorSelect" th:field="*{doctorId}"
+                            name="doctorId"
+                            hx-get="/appointments/slots-fragment"
+                            hx-include="#apptDate"
+                            hx-target="#slot-section"
+                            hx-trigger="change"
+                            hx-indicator="#slot-loading"
+                            hx-on::before-request="document.querySelectorAll('#slot-section [name=appointmentTime]').forEach(function(r){r.checked=false})"
+                            class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white text-sm">
+                        <option value="">— Any / TBD —</option>
+                        <option th:each="d : ${doctors}"
+                                th:value="${d.id}"
+                                th:text="'Dr ' + ${d.fullName} + (${d.specialization != null} ? ' — ' + ${d.specialization} : '')"></option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Slot section — loaded via HTMX on doctor/date change; server-rendered on first load -->
+            <!-- Loading indicator shown by HTMX while the fragment request is in flight -->
+            <div id="slot-loading" class="htmx-indicator flex items-center gap-2 py-2 text-xs text-slate-400">
+                <svg class="animate-spin w-4 h-4 text-primary-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Loading slots…
+            </div>
+            <div id="slot-section">
+                <div th:replace="~{appointment/slots-fragment :: slots}"></div>
+            </div>
+        </div>
+
+        <!-- ── Details ───────────────────────────────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Details</h2>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Reason / Chief Complaint</label>
+                <input th:field="*{reason}" type="text"
+                       placeholder="Fever, follow-up, eye check…" maxlength="256"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Notes</label>
+                <textarea th:field="*{notes}" rows="2" placeholder="Any special instructions…"
+                          class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"></textarea>
+            </div>
+        </div>
+
+        <button type="submit"
+                :disabled="!canBook"
+                :class="canBook
+                    ? 'bg-primary-600 hover:bg-primary-700 text-white cursor-pointer'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+                class="w-full font-semibold py-3 rounded-lg transition-colors">
+            Book Appointment
+        </button>
+    </form>
+
+    <!--
+      After each HTMX swap into #slot-section, re-evaluate whether booking is allowed.
+      #slot-unavailable is injected by the fragment when the doctor has no hours on that day.
+      We update the Alpine.js canBook flag on the form so the submit button reacts.
+    -->
+    <script>
+        document.addEventListener('htmx:afterSettle', function (e) {
+            if (e.detail.target && e.detail.target.id === 'slot-section') {
+                var blocked = !!document.getElementById('slot-unavailable');
+                var form    = document.querySelector('form[x-data]');
+                if (form && form._x_dataStack && form._x_dataStack[0]) {
+                    form._x_dataStack[0].canBook = !blocked;
+                }
+            }
+        });
+    </script>
+
+</section>
+</body>
+</html>

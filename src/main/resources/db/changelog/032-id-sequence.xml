@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        Global counter for MRN / BILL / encounter numbers (PREFIX-YYYY-NNNNN).
+
+        Replaces the old "COUNT(*) of existing rows + 1" scheme, which (a) could be narrowed to one
+        clinic by the Hibernate tenantFilter and re-issue a number another clinic already holds,
+        and (b) raced under concurrent inserts. A row per PREFIX-YYYY key is incremented with
+        UPDATE (row lock) so concurrent callers serialise instead of colliding.
+
+        No data migration needed: the first use of a key seeds it from the highest number already
+        in use for that prefix/year (see MedicalIdSequence).
+    -->
+
+    <changeSet id="032-id-sequence" author="claude">
+        <createTable tableName="id_sequence">
+            <column name="seq_key" type="VARCHAR(40)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="counter" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

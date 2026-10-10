@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(#{platform.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'platform')}">
+<section>
+    <h1 class="text-xl font-semibold mb-1" th:text="#{platform.title}">Platform admin</h1>
+    <p class="text-sm text-slate-500 mb-4" th:text="#{platform.subtitle}">
+        Manage the software-publisher-owned policies and master data shared with every clinic.
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+        <a href="/platform/terms"
+           class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-primary-400">
+            <div class="font-semibold mb-1" th:text="#{platform.terms.card}">Terms &amp; Privacy</div>
+            <p class="text-xs text-slate-500"
+               th:if="${currentTerms != null}"
+               th:text="${currentTerms.version} + ' · ' + ${#temporals.format(currentTerms.effectiveDate, 'dd MMM yyyy')}"></p>
+            <p class="text-xs text-amber-700" th:if="${currentTerms == null}" th:text="#{platform.terms.no_version}">No version published.</p>
+        </a>
+
+        <a href="/platform/degrees"
+           class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-primary-400">
+            <div class="font-semibold mb-1" th:text="#{platform.degrees.card}">Medical degrees</div>
+            <p class="text-xs text-slate-500" th:text="#{platform.value_count(${degreeCount})}"></p>
+        </a>
+
+        <a href="/platform/specializations"
+           class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-primary-400">
+            <div class="font-semibold mb-1" th:text="#{platform.spec.card}">Specializations</div>
+            <p class="text-xs text-slate-500" th:text="#{platform.value_count(${specializationCount})}"></p>
+        </a>
+
+        <a href="/platform/investigations"
+           class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-primary-400">
+            <div class="font-semibold mb-1" th:text="#{platform.inv.card}">Investigations</div>
+            <p class="text-xs text-slate-500" th:text="#{platform.value_count(${investigationCount})}"></p>
+        </a>
+    </div>
+</section>
+</body>
+</html>

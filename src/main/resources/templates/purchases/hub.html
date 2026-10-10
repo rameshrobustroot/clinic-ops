@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Purchases')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'purchases')}">
+<section>
+
+    <h1 class="text-xl font-semibold mb-4">Purchases</h1>
+
+    <!-- ── Summary cards ──────────────────────────────────────────────── -->
+    <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <div class="text-xs uppercase tracking-wider text-amber-700">Outstanding</div>
+            <div class="text-xl font-bold text-amber-900 mt-1"
+                 th:text="'₹' + ${#numbers.formatDecimal(outstandingTotal, 1, 2)}">₹0.00</div>
+            <div class="text-xs text-amber-600 mt-0.5">unpaid bills</div>
+        </div>
+        <div th:if="${overdueCount > 0}"
+             class="bg-red-50 border border-red-200 rounded-xl p-3">
+            <div class="text-xs uppercase tracking-wider text-red-700">Overdue</div>
+            <div class="text-xl font-bold text-red-900 mt-1" th:text="${overdueCount}">0</div>
+            <div class="text-xs text-red-600">bill(s) past due</div>
+        </div>
+        <div th:if="${overdueCount == 0}"
+             class="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+            <div class="text-xs uppercase tracking-wider text-emerald-700">Overdue</div>
+            <div class="text-xl font-bold text-emerald-900 mt-1">None</div>
+            <div class="text-xs text-emerald-600">all bills on time</div>
+        </div>
+    </div>
+
+    <!-- ── Supplier Bills section ──────────────────────────────────────── -->
+    <div class="bg-white border border-slate-200 rounded-xl mb-4 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <div>
+                <h2 class="font-semibold text-slate-800">Supplier Bills</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Track bills, record payments, monitor balances</p>
+            </div>
+            <a href="/supplier-bills/new"
+               class="bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+                + New Bill
+            </a>
+        </div>
+
+        <!-- Recent unpaid bills preview -->
+        <div th:if="${#lists.isEmpty(recentUnpaidBills)}"
+             class="px-4 py-5 text-center text-sm text-slate-400">
+            No outstanding bills. You're all caught up!
+        </div>
+
+        <ul th:if="${!#lists.isEmpty(recentUnpaidBills)}" class="divide-y divide-slate-100">
+            <li th:each="bill : ${recentUnpaidBills}"
+                class="px-4 py-3 flex items-center justify-between hover:bg-slate-50">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-sm truncate"
+                              th:text="${bill.billNumber ?: 'Unnamed bill'}">INV-001</span>
+                        <span th:switch="${bill.status}">
+                            <span th:case="'OVERDUE'"
+                                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold shrink-0">OVERDUE</span>
+                            <span th:case="'PARTIAL'"
+                                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold shrink-0">PARTIAL</span>
+                            <span th:case="*"
+                                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold shrink-0">UNPAID</span>
+                        </span>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-0.5">
+                        <span th:if="${bill.supplierId != null}"
+                              th:text="${supplierNames[bill.supplierId]}"></span>
+                        <span th:if="${bill.dueDate != null}"
+                              th:text="' · Due ' + ${#temporals.format(bill.dueDate, 'dd MMM')}"></span>
+                    </div>
+                </div>
+                <div class="text-right ml-3 shrink-0">
+                    <div class="font-semibold text-sm text-amber-700"
+                         th:text="'₹' + ${#numbers.formatDecimal(bill.balance, 1, 2)}"></div>
+                    <a th:href="@{/supplier-bills/{id}(id=${bill.id})}"
+                       class="text-xs text-primary-600">View →</a>
+                </div>
+            </li>
+        </ul>
+
+        <div class="px-4 py-3 border-t border-slate-100 bg-slate-50">
+            <a href="/supplier-bills" class="text-sm text-primary-600 font-medium">View all bills →</a>
+        </div>
+    </div>
+
+    <!-- ── Suppliers section ───────────────────────────────────────────── -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <div>
+                <h2 class="font-semibold text-slate-800">
+                    Suppliers
+                    <span th:if="${supplierCount > 0}"
+                          class="text-sm font-normal text-slate-400"
+                          th:text="'(' + ${supplierCount} + ')'"></span>
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">Manage suppliers and their payment details</p>
+            </div>
+            <a href="/suppliers/new"
+               class="border border-primary-600 text-primary-600 hover:bg-primary-50 text-xs font-medium px-3 py-1.5 rounded-lg">
+                + Add Supplier
+            </a>
+        </div>
+
+        <div th:if="${supplierCount == 0}"
+             class="px-4 py-5 text-center text-sm text-slate-400">
+            No suppliers yet.
+            <a href="/suppliers/new" class="text-primary-600 font-medium">Add your first →</a>
+        </div>
+
+        <!-- Show up to 5 suppliers as a quick preview -->
+        <ul th:if="${supplierCount > 0}" class="divide-y divide-slate-100">
+            <li th:each="s : ${supplierPreview}"
+                class="px-4 py-3 flex items-center justify-between hover:bg-slate-50">
+                <div>
+                    <div class="font-medium text-sm" th:text="${s.name}"></div>
+                    <div class="text-xs text-slate-500">
+                        <span th:if="${s.phone}" th:text="${s.phone}"></span>
+                        <span th:if="${s.upiId}" class="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">UPI</span>
+                        <span th:if="${s.bankAccountNumber}" class="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Bank</span>
+                        <span th:if="${s.creditBalance != null and s.creditBalance > 0}"
+                              class="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700"
+                              th:text="'₹' + ${#numbers.formatDecimal(s.creditBalance, 1, 2)} + ' credit'"></span>
+                    </div>
+                </div>
+                <a th:href="@{/supplier-bills(supplierId=${s.id})}"
+                   class="text-xs text-primary-600 shrink-0 ml-2">Bills →</a>
+            </li>
+        </ul>
+
+        <div th:if="${supplierCount > 0}" class="px-4 py-3 border-t border-slate-100 bg-slate-50">
+            <a href="/suppliers" class="text-sm text-primary-600 font-medium">Manage all suppliers →</a>
+        </div>
+    </div>
+
+</section>
+</body>
+</html>

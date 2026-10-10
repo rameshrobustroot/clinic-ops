@@ -1,0 +1,18 @@
+/* Touch-friendly defaults */
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+input, select, textarea { font-size: 16px; } /* prevents iOS zoom on focus */
+
+/* Alpine.js — hide cloaked elements until Alpine initializes, otherwise
+   x-show'd sections briefly flash before being hidden. */
+[x-cloak] { display: none !important; }
+
+/* HTMX swap indicator */
+.htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+.htmx-request .htmx-indicator { opacity: 1; }
+.htmx-request.htmx-indicator { opacity: 1; }
+
+/* Expiry color chips (plain CSS — Tailwind CDN doesn't process @apply) */
+.chip-green  { background-color: #d1fae5; color: #047857; }
+.chip-yellow { background-color: #fef3c7; color: #b45309; }
+.chip-red    { background-color: #fee2e2; color: #b91c1c; }
+.chip-gray   { background-color: #f1f5f9; color: #475569; }

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="006-prescription-item" author="claude">
+        <createTable tableName="prescription_item">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="visit_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_rxitem_visit" references="visit(id)"/></column>
+            <column name="line_no" type="INT" defaultValueNumeric="1"><constraints nullable="false"/></column>
+            <column name="medicine_id" type="BIGINT"><constraints foreignKeyName="fk_rxitem_medicine" references="medicine(id)"/></column>
+            <column name="custom_name" type="VARCHAR(128)"/>
+            <column name="dosage" type="VARCHAR(64)"/>
+            <column name="frequency" type="VARCHAR(64)"/>
+            <column name="duration" type="VARCHAR(64)"/>
+            <column name="instructions" type="VARCHAR(256)"/>
+        </createTable>
+        <createIndex tableName="prescription_item" indexName="idx_rxitem_visit"><column name="visit_id"/></createIndex>
+    </changeSet>
+
+    <changeSet id="006-procurement-item" author="claude">
+        <createTable tableName="procurement_item">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="clinic_id" type="BIGINT"><constraints nullable="false" foreignKeyName="fk_procure_clinic" references="clinic(id)"/></column>
+            <column name="medicine_id" type="BIGINT"><constraints foreignKeyName="fk_procure_medicine" references="medicine(id)"/></column>
+            <column name="medicine_name" type="VARCHAR(128)"><constraints nullable="false"/></column>
+            <column name="source" type="VARCHAR(24)" defaultValue="MANUAL"><constraints nullable="false"/></column>
+            <column name="source_visit_id" type="BIGINT"><constraints foreignKeyName="fk_procure_visit" references="visit(id)"/></column>
+            <column name="status" type="VARCHAR(24)" defaultValue="PENDING"><constraints nullable="false"/></column>
+            <column name="notes" type="VARCHAR(256)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="created_by" type="BIGINT"><constraints foreignKeyName="fk_procure_user" references="app_user(id)"/></column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="procurement_item" indexName="idx_procure_clinic_status">
+            <column name="clinic_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

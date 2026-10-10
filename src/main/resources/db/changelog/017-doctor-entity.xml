@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Decouple "doctor" from "app_user". Not every consulting doctor needs a login;
+         conversely a single AppUser is now optionally linked to one Doctor row. -->
+
+    <changeSet id="017-create-doctor" author="claude">
+        <createTable tableName="doctor">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="clinic_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_doctor_clinic" references="clinic(id)"/>
+            </column>
+            <column name="full_name" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qualification" type="VARCHAR(256)"/>
+            <column name="registration_no" type="VARCHAR(64)"/>
+            <column name="specialization" type="VARCHAR(128)"/>
+            <column name="phone" type="VARCHAR(16)"/>
+            <column name="email" type="VARCHAR(128)"/>
+            <column name="user_id" type="BIGINT">
+                <constraints foreignKeyName="fk_doctor_user" references="app_user(id)"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="doctor" indexName="idx_doctor_clinic_active">
+            <column name="clinic_id"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Seed one Doctor row for each existing OWNER/DOCTOR app_user so existing visits
+         keep a coherent "consulting doctor" attribution after the FK switch below. -->
+    <changeSet id="017-seed-doctors-from-users" author="claude">
+        <sql>
+            INSERT INTO doctor (clinic_id, full_name, qualification, registration_no,
+                                specialization, phone, user_id, active)
+            SELECT clinic_id,
+                   COALESCE(NULLIF(TRIM(full_name), ''), username),
+                   qualification, registration_no, specialization, phone,
+                   id, enabled
+            FROM app_user
+            WHERE role IN ('OWNER', 'DOCTOR')
+        </sql>
+    </changeSet>
+
+    <!-- Drop the old FK that pointed visit.doctor_id → app_user.id so we can remap. -->
+    <changeSet id="017-drop-old-visit-doctor-fk" author="claude">
+        <dropForeignKeyConstraint baseTableName="visit" constraintName="fk_visit_doctor"/>
+    </changeSet>
+
+    <!-- Remap each visit.doctor_id from the old app_user.id to the new doctor.id.
+         Rows whose old doctor_id wasn't actually an OWNER/DOCTOR (e.g. receptionist
+         miscategorized by earlier buggy code) become NULL — that's correct: the visit
+         can't be attributed to a real doctor. -->
+    <changeSet id="017-remap-visit-doctor-id" author="claude">
+        <sql>
+            UPDATE visit
+            SET doctor_id = (SELECT d.id FROM doctor d WHERE d.user_id = visit.doctor_id)
+            WHERE doctor_id IS NOT NULL
+        </sql>
+    </changeSet>
+
+    <!-- Add the new FK to doctor(id). -->
+    <changeSet id="017-add-new-visit-doctor-fk" author="claude">
+        <addForeignKeyConstraint
+                baseTableName="visit" baseColumnNames="doctor_id"
+                referencedTableName="doctor" referencedColumnNames="id"
+                constraintName="fk_visit_doctor"/>
+    </changeSet>
+
+</databaseChangeLog>

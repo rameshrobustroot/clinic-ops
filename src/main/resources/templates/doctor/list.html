@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(#{doctors.list.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+            <a href="/settings" class="text-primary-600">←</a>
+            <h1 class="text-xl font-semibold" th:text="#{doctors.list.title}">Doctors</h1>
+        </div>
+        <a href="/doctors/new"
+           class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700"
+           th:text="#{doctors.list.add}">+ Add</a>
+    </div>
+
+    <div th:if="${#lists.isEmpty(doctors)}" class="text-center text-slate-500 py-12">
+        <p class="mb-2" th:text="#{doctors.list.empty}">No doctors yet.</p>
+        <a href="/doctors/new" class="text-primary-600 font-medium">Add your first doctor →</a>
+    </div>
+
+    <ul class="space-y-2">
+        <li th:each="d : ${doctors}">
+            <div class="block bg-white border border-slate-200 rounded-xl p-3"
+                 th:classappend="${!d.active} ? 'opacity-60' : ''">
+                <div class="flex items-center justify-between gap-2">
+                    <a th:href="@{/doctors/{id}/edit(id=${d.id})}" class="flex-1">
+                        <div class="font-medium" th:text="'Dr ' + ${d.fullName}"></div>
+                        <div class="text-xs text-slate-500 mt-0.5 space-x-1">
+                            <span th:if="${d.qualification}" th:text="${d.qualification}"></span>
+                            <span th:if="${d.specialization}" th:text="' · ' + ${d.specialization}"></span>
+                            <span th:if="${d.registrationNo}" class="text-slate-400"
+                                  th:text="' · Reg ' + ${d.registrationNo}"></span>
+                        </div>
+                        <div class="text-xs text-slate-400 mt-0.5"
+                             th:if="${!#strings.isEmpty(d.phone) or !#strings.isEmpty(d.email)}">
+                            <span th:if="${d.phone}" th:text="${d.phone}"></span>
+                            <span th:if="${d.email}" th:text="' · ' + ${d.email}"></span>
+                        </div>
+                    </a>
+                    <div class="flex flex-col items-end gap-1">
+                        <span th:if="${d.userId != null}"
+                              class="text-[10px] px-2 py-0.5 rounded-full chip-green"
+                              title="Linked to a clinic login">Login</span>
+                        <span th:if="${!d.active}"
+                              class="text-[10px] px-2 py-0.5 rounded-full chip-gray">Inactive</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 mt-2 pt-2 border-t border-slate-100 text-xs">
+                    <a th:href="@{/doctors/{id}/edit(id=${d.id})}"
+                       class="inline-flex items-center text-primary-600 leading-none">Edit</a>
+                    <a th:href="@{/doctors/{id}/schedule(id=${d.id})}"
+                       class="inline-flex items-center text-slate-500 hover:text-primary-600 leading-none">Schedule</a>
+                    <form th:if="${d.active}" th:action="@{/doctors/{id}/delete(id=${d.id})}"
+                          method="post" class="m-0 leading-none">
+                        <button type="submit"
+                                class="inline-flex items-center bg-transparent border-0 p-0 text-red-600 leading-none cursor-pointer"
+                                onclick="return confirm('Deactivate Dr ' + this.dataset.name + '? They will no longer appear in visit dropdowns.')"
+                                th:attr="data-name=${d.fullName}">Deactivate</button>
+                    </form>
+                    <form th:if="${!d.active}" th:action="@{/doctors/{id}/restore(id=${d.id})}"
+                          method="post" class="m-0 leading-none">
+                        <button type="submit"
+                                class="inline-flex items-center bg-transparent border-0 p-0 text-emerald-600 leading-none cursor-pointer">Reactivate</button>
+                    </form>
+                </div>
+            </div>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

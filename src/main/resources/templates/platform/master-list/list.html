@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(${title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'platform')}">
+<section>
+    <div class="flex items-center gap-3 mb-3">
+        <a href="/platform" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold" th:text="${title}"></h1>
+    </div>
+    <p class="text-sm text-slate-500 mb-3">
+        Platform-wide values shared with every clinic. Edits here change what every clinic sees on
+        the visit + doctor forms.
+    </p>
+
+    <form th:action="@{/platform/{kind}(kind=${kind})}" method="post"
+          class="flex gap-2 mb-4 bg-white border border-slate-200 rounded-xl p-3">
+        <input name="name" required maxlength="128" placeholder="Add platform value…"
+               class="flex-1 px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        <button type="submit"
+                class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">+ Add</button>
+    </form>
+
+    <div th:if="${#lists.isEmpty(items)}" class="text-center text-slate-500 py-12">
+        No platform values yet — add the first above.
+    </div>
+
+    <ul class="space-y-1.5">
+        <li th:each="m : ${items}"
+            class="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-2"
+            th:classappend="${!m.active} ? 'opacity-60' : ''">
+            <form th:action="@{/platform/{kind}/{id}/rename(kind=${kind},id=${m.id})}" method="post"
+                  class="flex-1 flex gap-2 items-center">
+                <input name="name" th:value="${m.name}" maxlength="128"
+                       class="flex-1 bg-transparent text-sm focus:outline-none focus:bg-slate-50 px-2 py-1 rounded"/>
+                <button type="submit" class="text-xs text-slate-500 hover:text-primary-700">Save</button>
+            </form>
+            <span th:if="${!m.active}"
+                  class="text-[10px] px-2 py-0.5 rounded-full chip-gray">Hidden</span>
+            <form th:if="${m.active}" th:action="@{/platform/{kind}/{id}/delete(kind=${kind},id=${m.id})}"
+                  method="post" class="m-0">
+                <button type="submit" class="text-xs text-red-500">Hide</button>
+            </form>
+            <form th:if="${!m.active}" th:action="@{/platform/{kind}/{id}/restore(kind=${kind},id=${m.id})}"
+                  method="post" class="m-0">
+                <button type="submit" class="text-xs text-emerald-600">Restore</button>
+            </form>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

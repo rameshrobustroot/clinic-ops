@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Terms version')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center gap-3 mb-3">
+        <a href="/platform/terms" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">
+            Version <span class="font-mono" th:text="${doc.version}"></span>
+        </h1>
+    </div>
+
+    <p class="text-xs text-slate-500 mb-3">
+        Effective <span th:text="${#temporals.format(doc.effectiveDate, 'dd MMM yyyy')}"></span>
+        &middot; published <span th:text="${#temporals.format(doc.publishedAt, 'dd MMM yyyy, HH:mm')}"></span>
+    </p>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+        <div th:utext="${doc.body}"></div>
+    </div>
+</section>
+</body>
+</html>

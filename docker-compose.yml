@@ -1,0 +1,52 @@
+# ClinicOps — one-command stack
+#
+#   docker compose up -d        # start (first run builds the image, ~3-5 min)
+#   docker compose logs -f app  # tail app logs
+#   docker compose down         # stop (data + uploads persist in volumes)
+#   docker compose down -v      # stop + wipe data (DESTRUCTIVE)
+#
+# Open http://localhost:8090 — default login: clinic code `demo1`, user `admin`, pw `admin123`.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: clinic-ops-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: clinic_ops
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - clinic_pg_data:/var/lib/postgresql/data
+    # Uncomment to inspect the DB from your host (psql -h localhost -U postgres clinic_ops)
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d clinic_ops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    image: clinic-ops-app:latest
+    container_name: clinic-ops-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/clinic_ops
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SERVER_PORT: 8090
+      # Override the JVM heap if you need to
+      # JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
+    ports:
+      - "8090:8090"
+    volumes:
+      - clinic_uploads:/data/uploads
+
+volumes:
+  clinic_pg_data:
+  clinic_uploads:

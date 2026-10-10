@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Clinic Profile')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/settings" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">Clinic Profile</h1>
+    </div>
+
+    <p class="text-sm text-slate-500 mb-3">
+        These details appear on prescriptions, bills, and the patient-facing parts of the app.
+    </p>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+    <div th:if="${success}" class="mb-3 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm" th:text="${success}"></div>
+
+    <form th:action="@{/settings/clinic}" method="post" enctype="multipart/form-data"
+          class="space-y-5">
+
+        <!-- Logo -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">Logo</h2>
+            <div class="flex items-center gap-4">
+                <div class="w-24 h-24 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
+                    <img th:if="${clinic.logoPath}" src="/settings/clinic/logo" alt="Clinic logo"
+                         class="max-w-full max-h-full object-contain"/>
+                    <span th:if="${clinic.logoPath == null}" class="text-xs text-slate-400">No logo</span>
+                </div>
+                <div class="flex-1">
+                    <input type="file" name="logoFile" accept="image/png,image/jpeg,image/svg+xml"
+                           class="w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary-700"/>
+                    <p class="text-xs text-slate-400 mt-1">PNG, JPG, or SVG. Square works best (e.g. 200×200).</p>
+                </div>
+            </div>
+            <form th:if="${clinic.logoPath}" th:action="@{/settings/clinic/logo/remove}" method="post" class="mt-3">
+                <button type="submit" class="text-xs text-red-600"
+                        onclick="return confirm('Remove the logo?')">Remove current logo</button>
+            </form>
+        </div>
+
+        <!-- Identity -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Identity</h2>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Clinic name *</label>
+                <input name="name" required th:value="${clinic.name}" maxlength="128"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Tagline</label>
+                <input name="tagline" th:value="${clinic.tagline}" maxlength="255"
+                       placeholder="e.g. Family-friendly care since 2018"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                <p class="text-xs text-slate-400 mt-1">Appears under the clinic name on documents.</p>
+            </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Contact</h2>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Address</label>
+                <input name="address" th:value="${clinic.address}"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Phone</label>
+                    <input name="phone" type="tel" inputmode="numeric"
+                           pattern="^[6-9][0-9]{9}$" maxlength="10" placeholder="9876543210"
+                           th:value="${clinic.phone}"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Email</label>
+                    <input name="email" type="email" th:value="${clinic.email}" maxlength="128"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Website</label>
+                <input name="website" th:value="${clinic.website}" maxlength="255"
+                       placeholder="https://example.com"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+        </div>
+
+        <!-- Tax / regulatory -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Tax &amp; regulatory</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm font-medium text-slate-700">License No.</label>
+                    <input name="licenseNo" th:value="${clinic.licenseNo}" maxlength="64"
+                           placeholder="e.g. KMC/L/12345"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700">GSTIN</label>
+                    <input name="gstin" th:value="${clinic.gstin}" maxlength="15"
+                           pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9A-Z]$"
+                           placeholder="22AAAAA0000A1Z5"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none uppercase"
+                           style="text-transform: uppercase"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer note -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Document footer</h2>
+            <textarea name="footerNote" rows="2" maxlength="512"
+                      placeholder="e.g. Emergency: call 9876543210 · Open Mon-Sat 9am-7pm"
+                      th:text="${clinic.footerNote}"
+                      class="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"></textarea>
+            <p class="text-xs text-slate-400">Printed at the bottom of prescriptions and bills.</p>
+        </div>
+
+        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Save Clinic Profile
+        </button>
+    </form>
+</section>
+</body>
+</html>

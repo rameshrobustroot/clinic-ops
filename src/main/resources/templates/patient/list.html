@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head th:replace="~{fragments/layout :: head(#{patient.list.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'patients')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <h1 class="text-xl font-semibold" th:text="#{patient.list.title}">Patients</h1>
+        <a href="/patients/new"
+           class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700"
+           th:text="#{patient.list.new}">+ New</a>
+    </div>
+
+    <div class="relative mb-3">
+        <input type="search" name="q" th:value="${q}" th:placeholder="#{patient.list.search.placeholder}"
+               class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+               hx-get="/patients/search" hx-trigger="keyup changed delay:250ms, search" hx-target="#results"
+               autofocus/>
+        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    </div>
+
+    <div id="results" th:fragment="results">
+        <ul class="space-y-2" th:if="${!#lists.isEmpty(patients)}">
+            <li th:each="p : ${patients}">
+                <a th:href="@{/patients/{id}(id=${p.id})}"
+                   class="block bg-white border border-slate-200 rounded-xl p-3 hover:border-primary-400 transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium" th:text="${p.name}"></div>
+                            <div class="text-xs text-slate-500">
+                                <span class="font-mono" th:text="${p.mrn}"></span>
+                                <span th:text="' · ' + ${p.phone}"></span>
+                            </div>
+                        </div>
+                        <div class="text-xs text-slate-400">
+                            <span th:if="${p.age != null}" th:text="${p.age} + 'y'"></span>
+                            <span th:if="${p.gender}" th:text="' · ' + ${p.gender}"></span>
+                        </div>
+                    </div>
+                </a>
+            </li>
+        </ul>
+        <div th:if="${#lists.isEmpty(patients)}"
+             class="text-center text-slate-500 py-12">
+            <p class="mb-2" th:text="#{patient.list.empty}">No patients found.</p>
+            <a href="/patients/new" class="text-primary-600 font-medium" th:text="#{patient.list.register_first}">Register a patient →</a>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${totalPages != null and totalPages > 1}"
+             class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-sm">
+            <a th:if="${hasPrev}" th:href="@{/patients(q=${q}, page=${pageNo - 1})}"
+               class="text-primary-600" th:text="#{common.previous}">← Previous</a>
+            <span th:unless="${hasPrev}" class="text-slate-300" th:text="#{common.previous}">← Previous</span>
+            <span class="text-xs text-slate-500"
+                  th:text="#{patient.list.page_summary(${pageNo + 1}, ${totalPages}, ${totalElements})}"></span>
+            <a th:if="${hasNext}" th:href="@{/patients(q=${q}, page=${pageNo + 1})}"
+               class="text-primary-600" th:text="#{common.next_arrow}">Next →</a>
+            <span th:unless="${hasNext}" class="text-slate-300" th:text="#{common.next_arrow}">Next →</span>
+        </div>
+    </div>
+</section>
+</body>
+</html>

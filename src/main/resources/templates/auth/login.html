@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta name="theme-color" content="#7c3aed"/>
+    <title th:text="#{login.title} + ' · ' + #{app.name}">Sign in · ClinicOps</title>
+    <link rel="manifest" href="/manifest.webmanifest"/>
+    <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml"/>
+    <script src="/vendor/tailwind-3.4.16.min.js"></script>
+    <script>
+        // Pre-auth pages always use the default (violet) palette — no user theme yet.
+        tailwind.config = { theme: { extend: { colors: { primary: {
+            50:'#f5f3ff', 100:'#ede9fe', 200:'#ddd6fe', 300:'#c4b5fd', 400:'#a78bfa',
+            500:'#8b5cf6', 600:'#7c3aed', 700:'#6d28d9', 800:'#5b21b6', 900:'#4c1d95'
+        } } } } };
+    </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center p-4">
+<div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+    <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+            <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2m7-7v4"/></svg>
+        </div>
+        <div>
+            <h1 class="text-xl font-semibold text-slate-800" th:text="#{app.name}">ClinicOps</h1>
+            <p class="text-xs text-slate-500" th:text="#{app.tagline}">Daily operations, simplified.</p>
+        </div>
+    </div>
+
+    <!-- Tiny language switcher for pre-auth pages -->
+    <p class="text-xs text-right text-slate-400 mb-3">
+        <a th:href="@{/login(lang='en')}"
+           th:classappend="${#locale.language == 'en'} ? 'font-semibold text-primary-600' : ''">EN</a>
+        <span class="mx-1">|</span>
+        <a th:href="@{/login(lang='ta')}"
+           th:classappend="${#locale.language == 'ta'} ? 'font-semibold text-primary-600' : ''">த</a>
+    </p>
+
+    <div th:if="${#locale.language == 'ta'}"
+         class="mb-3 p-2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">
+        ⚠ <span th:text="#{draft.translation.banner}"></span>
+    </div>
+
+    <div th:if="${param.error}" class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="#{login.invalid}">Invalid credentials.</div>
+    <div th:if="${param.logout}" class="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm" th:text="#{login.logged_out}">You have been signed out.</div>
+    <div th:if="${param.registered}" class="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm">
+        <span th:text="#{login.registered}">Clinic registered. Your clinic code is</span>
+        <strong class="font-mono" th:text="${param.code}"></strong>.
+        <span th:text="#{login.save_code}">Save it — your staff will need it to sign in.</span>
+    </div>
+
+    <form id="loginForm" th:action="@{/login}" method="post" class="space-y-4">
+        <div id="clinicCodeRow">
+            <label class="text-sm font-medium text-slate-700" th:text="#{login.clinic_code}">Clinic code</label>
+            <input id="clinicCode" name="clinicCode" autofocus autocomplete="organization"
+                   pattern="[a-z0-9_-]{3,32}" th:placeholder="#{login.clinic_code.placeholder}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 lowercase"
+                   style="text-transform: lowercase"/>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700" th:text="#{login.username}">Username</label>
+            <input id="usernameField" name="username" autocomplete="username" required
+                   pattern="[a-z0-9._-]{3,32}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 lowercase"
+                   style="text-transform: lowercase"/>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700" th:text="#{login.password}">Password</label>
+            <input name="password" type="password" autocomplete="current-password" required
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
+        </div>
+        <button type="submit"
+                class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 rounded-lg transition"
+                th:text="#{login.sign_in_button}">Sign in</button>
+    </form>
+
+    <p class="mt-4 text-xs text-center">
+        <a href="#" id="platformToggle" class="text-slate-500 hover:text-primary-600"
+           th:data-clinic-label="#{login.clinic_toggle}"
+           th:data-platform-label="#{login.platform_admin_toggle}"
+           th:text="#{login.platform_admin_toggle}">
+            Sign in as platform admin instead →
+        </a>
+    </p>
+
+    <p class="mt-6 text-xs text-slate-500 text-center">
+        <span th:text="#{login.new_clinic}">New clinic?</span>
+        <a href="/register" class="text-primary-600 font-medium" th:text="#{login.register_link}">Register here</a>
+    </p>
+
+    <p class="mt-2 text-xs text-slate-400 text-center">
+        <span th:text="#{login.demo_hint}">Demo · code</span>
+        <code>demo1</code> · <code>admin</code> · <code>admin123</code>
+    </p>
+</div>
+
+<script>
+    // Mode A: clinic login → submit "clinicCode/username"
+    // Mode B: platform-admin login → hide clinic-code row; submit just "username"
+    const codeRow = document.getElementById('clinicCodeRow');
+    const codeInput = document.getElementById('clinicCode');
+    const userInput = document.getElementById('usernameField');
+    const toggle = document.getElementById('platformToggle');
+    let platformMode = false;
+
+    function applyMode() {
+        if (platformMode) {
+            codeRow.style.display = 'none';
+            codeInput.removeAttribute('required');
+            toggle.textContent = toggle.dataset.clinicLabel;
+        } else {
+            codeRow.style.display = '';
+            codeInput.setAttribute('required', 'required');
+            toggle.textContent = toggle.dataset.platformLabel;
+        }
+    }
+    toggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        platformMode = !platformMode;
+        applyMode();
+        userInput.focus();
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', function () {
+        const user = userInput.value.trim().toLowerCase();
+        if (platformMode) {
+            userInput.value = user;
+        } else {
+            const code = codeInput.value.trim().toLowerCase();
+            userInput.value = code + '/' + user;
+        }
+    });
+</script>
+</body>
+</html>

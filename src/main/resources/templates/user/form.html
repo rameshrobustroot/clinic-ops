@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('New User')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/users" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">New User</h1>
+    </div>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+
+    <form th:action="@{/users}" method="post"
+          class="space-y-4 bg-white rounded-xl border border-slate-200 p-4">
+        <div>
+            <label class="text-sm font-medium text-slate-700">Full name *</label>
+            <input name="fullName" required autofocus
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Username *</label>
+            <input name="username" required pattern="[a-z0-9._-]{3,32}" placeholder="lowercase letters/digits/._-"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Role *</label>
+            <select name="role" required
+                    class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"></option>
+            </select>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Phone</label>
+            <input name="phone" type="tel" inputmode="numeric"
+                   pattern="^[6-9][0-9]{9}$" maxlength="10" placeholder="9876543210"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p class="text-xs text-slate-400 mt-1">Optional. 10-digit Indian mobile</p>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Temporary password * (6+ chars)</label>
+            <input name="password" type="text" required minlength="6"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p class="text-xs text-slate-400 mt-1">Share with the user; ask them to change it on first login.</p>
+        </div>
+        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Create User
+        </button>
+    </form>
+</section>
+</body>
+</html>

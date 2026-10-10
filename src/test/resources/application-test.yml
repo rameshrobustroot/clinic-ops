@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:clinic_ops_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Kolkata
+  liquibase:
+    enabled: false
+  thymeleaf:
+    cache: false
+
+clinic:
+  uploads-dir: ${java.io.tmpdir}/clinic-ops-test-uploads
+  expiry-near-days: 90
+  expiry-critical-days: 30
+  low-stock-default: 10
+
+logging:
+  level:
+    root: WARN
+    com.clinicops: INFO
+    org.hibernate.SQL: WARN

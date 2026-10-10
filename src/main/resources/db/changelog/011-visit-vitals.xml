@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="011-visit-vitals" author="claude">
+        <addColumn tableName="visit">
+            <column name="vital_bp_systolic"    type="INT"/>
+            <column name="vital_bp_diastolic"   type="INT"/>
+            <column name="vital_pulse"          type="INT"/>
+            <column name="vital_temperature_f"  type="DECIMAL(4,1)"/>
+            <column name="vital_respiratory_rate" type="INT"/>
+            <column name="vital_spo2"           type="INT"/>
+            <column name="vital_weight_kg"      type="DECIMAL(5,2)"/>
+            <column name="vital_height_cm"      type="DECIMAL(5,2)"/>
+            <column name="vital_blood_glucose"  type="INT"/>
+            <column name="vital_blood_glucose_type" type="VARCHAR(16)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

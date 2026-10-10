@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Sale Receipt')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'sale')}">
+<section>
+    <div class="flex items-center justify-between mb-3 gap-2">
+        <a href="/sales" class="text-primary-600">← Sales</a>
+        <div class="flex gap-2">
+            <a th:href="@{/sales/{id}/receipt.pdf(id=${sale.id})}" target="_blank"
+               class="text-sm bg-slate-700 text-white px-3 py-1.5 rounded-lg">PDF</a>
+            <button th:if="${patient != null}" type="button"
+                    class="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg whatsapp-btn"
+                    th:attr="data-phone=${patient.phone},
+                             data-message=|Hello ${patient.name}, your bill ${sale.billNo} for ₹${sale.totalAmount}. Thank you!|">
+                WhatsApp
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-xs text-slate-400 uppercase tracking-wider">Bill</div>
+                <div class="text-xl font-bold font-mono" th:text="${sale.billNo}"></div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-slate-400" th:text="${#temporals.format(sale.createdAt, 'dd MMM yyyy · HH:mm')}"></div>
+                <div class="text-xs text-slate-400" th:text="${sale.paymentMode}"></div>
+            </div>
+        </div>
+        <div th:if="${patient != null}" class="mt-2 text-sm">
+            <span class="text-slate-500">Patient: </span>
+            <a th:href="@{/patients/{id}(id=${patient.id})}" class="text-primary-600 font-medium"
+               th:text="${patient.name} + ' · ' + ${patient.phone}"></a>
+            <span class="text-xs font-mono text-slate-400 ml-1" th:text="'(' + ${patient.mrn} + ')'"></span>
+        </div>
+        <div th:if="${patient == null}" class="mt-2 text-sm">
+            <span class="text-slate-500">Walk-in: </span>
+            <span class="font-medium"
+                  th:text="${sale.walkInName != null ? sale.walkInName : '—'}"></span>
+            <span th:if="${sale.walkInPhone != null}" class="text-slate-500"
+                  th:text="' · ' + ${sale.walkInPhone}"></span>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+            <tr>
+                <th class="text-left px-3 py-2">Medicine</th>
+                <th class="text-right px-3 py-2">Qty</th>
+                <th class="text-right px-3 py-2">₹ each</th>
+                <th class="text-right px-3 py-2">Gross</th>
+                <th class="text-right px-3 py-2">Disc</th>
+                <th class="text-right px-3 py-2">Total</th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+            <tr th:each="i : ${items}">
+                <td class="px-3 py-2" th:text="${medById[i.medicineId] != null ? medById[i.medicineId].name : 'Medicine ' + i.medicineId}"></td>
+                <td class="px-3 py-2 text-right" th:text="${i.quantity}"></td>
+                <td class="px-3 py-2 text-right" th:text="'₹' + ${i.unitPrice}"></td>
+                <td class="px-3 py-2 text-right text-slate-500" th:text="'₹' + ${i.grossAmount}"></td>
+                <td class="px-3 py-2 text-right text-amber-700">
+                    <span th:if="${i.discountAmount != null and i.discountAmount.signum() > 0}"
+                          th:text="'−₹' + ${i.discountAmount}"></span>
+                    <span th:if="${i.discountAmount == null or i.discountAmount.signum() == 0}"
+                          class="text-slate-300">—</span>
+                </td>
+                <td class="px-3 py-2 text-right font-medium" th:text="'₹' + ${i.lineTotal}"></td>
+            </tr>
+            </tbody>
+            <tfoot class="bg-slate-50 text-sm">
+            <tr>
+                <td colspan="5" class="px-3 py-2 text-right text-slate-500">Subtotal</td>
+                <td class="px-3 py-2 text-right" th:text="'₹' + ${sale.subtotalAmount}"></td>
+            </tr>
+            <tr th:if="${sale.billDiscountAmount != null and sale.billDiscountAmount.signum() > 0}">
+                <td colspan="5" class="px-3 py-2 text-right text-amber-700">
+                    Bill discount
+                    <span th:if="${sale.billDiscountType == 'PERCENT'}"
+                          th:text="'(' + ${sale.billDiscountValue} + '%)'" class="text-xs"></span>
+                </td>
+                <td class="px-3 py-2 text-right text-amber-700" th:text="'−₹' + ${sale.billDiscountAmount}"></td>
+            </tr>
+            <tr class="border-t border-slate-200">
+                <td colspan="5" class="px-3 py-2 text-right font-semibold">Grand Total</td>
+                <td class="px-3 py-2 text-right font-bold text-lg" th:text="'₹' + ${sale.totalAmount}"></td>
+            </tr>
+            </tfoot>
+        </table>
+    </div>
+</section>
+</body>
+</html>

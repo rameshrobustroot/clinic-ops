@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head th:replace="~{fragments/layout :: head(#{nav.dashboard})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'dashboard')}">
+<section>
+    <h1 class="text-xl font-semibold mb-1">
+        <span th:text="#{dashboard.greeting}">Welcome back</span>, <span sec:authentication="principal.fullName"></span>
+    </h1>
+    <p class="text-sm text-slate-500 mb-4" th:text="${#temporals.format(#temporals.createNow(), 'EEEE, dd MMM yyyy')}"></p>
+
+    <div class="flex gap-2 mb-4">
+        <a href="/sales/new" sec:authorize="hasAnyRole('OWNER','DOCTOR','PHARMACIST')"
+           class="flex-1 bg-primary-600 hover:bg-primary-700 text-white text-center font-semibold py-3 rounded-xl"
+           th:text="#{sale.list.new}">+ New Sale</a>
+        <a href="/patients/new"
+           class="flex-1 bg-white border border-slate-300 hover:border-primary-400 text-center font-semibold py-3 rounded-xl">+ <span th:text="#{nav.patients}">Patient</span></a>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+        <a href="/patients" class="bg-white border border-slate-200 rounded-xl p-4 hover:border-primary-400">
+            <div class="text-xs uppercase tracking-wider text-slate-400" th:text="#{dashboard.today_patients}">Patients today</div>
+            <div class="text-3xl font-bold mt-1" th:text="${dashboard.newPatientsToday}"></div>
+        </a>
+        <a href="/patients" class="bg-white border border-slate-200 rounded-xl p-4 hover:border-primary-400">
+            <div class="text-xs uppercase tracking-wider text-slate-400" th:text="#{nav.patients}">Visits today</div>
+            <div class="text-3xl font-bold mt-1" th:text="${dashboard.visitsToday}"></div>
+        </a>
+        <a href="/sales" sec:authorize="hasAnyRole('OWNER','DOCTOR','PHARMACIST')" class="bg-white border border-slate-200 rounded-xl p-4 hover:border-primary-400">
+            <div class="text-xs uppercase tracking-wider text-slate-400" th:text="#{dashboard.today_sales}">Sales today</div>
+            <div class="text-3xl font-bold mt-1" th:text="'₹' + ${dashboard.salesTotalToday}"></div>
+            <div class="text-xs text-slate-400" th:text="${dashboard.salesCountToday}"></div>
+        </a>
+        <a href="/alerts" class="bg-white border border-slate-200 rounded-xl p-4 hover:border-red-400">
+            <div class="text-xs uppercase tracking-wider text-slate-400" th:text="#{nav.alerts}">Alerts</div>
+            <div class="text-3xl font-bold mt-1 text-red-600"
+                 th:text="${expiredCount + criticalCount + lowStockCount}"></div>
+            <div class="text-xs text-slate-400">
+                <span th:text="${expiredCount}"></span> · <span th:text="${criticalCount}"></span> · <span th:text="${lowStockCount}"></span>
+            </div>
+        </a>
+    </div>
+
+    <a href="/procurement" th:if="${pendingProcurement > 0}"
+       class="block bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 hover:border-amber-400">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-amber-700" th:text="#{dashboard.pending_procurement}">Pending procurement</div>
+                <div class="text-lg font-semibold text-amber-900" th:text="${pendingProcurement}"></div>
+            </div>
+            <span class="text-amber-700">→</span>
+        </div>
+    </a>
+
+    <a href="/appointments" class="block bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 hover:border-amber-400"
+       th:if="${!#lists.isEmpty(followUpsToday)}">
+        <div class="flex items-center justify-between mb-1">
+            <h2 class="font-semibold text-amber-900" th:text="#{dashboard.followups_today.title}">Follow-ups due today</h2>
+            <span class="text-amber-700 text-sm" th:text="#{dashboard.appointments_view_all}">View all →</span>
+        </div>
+        <p class="text-sm text-amber-800"
+           th:text="#{dashboard.followups_today.summary(${#lists.size(followUpsToday)})}"></p>
+    </a>
+
+    <a href="/appointments" class="block bg-white border border-slate-200 rounded-xl p-4 mb-4 hover:border-primary-400"
+       th:if="${#lists.isEmpty(followUpsToday)}">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="font-semibold" th:text="#{dashboard.appointments_title}">Appointments</div>
+                <div class="text-xs text-slate-500" th:text="#{dashboard.appointments_summary}">View follow-ups for today, this week, or 30 days.</div>
+            </div>
+            <span class="text-primary-600">→</span>
+        </div>
+    </a>
+
+    <!-- Supplier bills: overdue -->
+    <a href="/supplier-bills" th:if="${overdueBillCount > 0}"
+       class="block bg-red-50 border border-red-200 rounded-xl p-4 mb-4 hover:border-red-400">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-red-700">Supplier Bills</div>
+                <div class="text-lg font-semibold text-red-900">
+                    <span th:text="${overdueBillCount}"></span> bill(s) overdue
+                    &middot; ₹<span th:text="${#numbers.formatDecimal(outstandingBills, 1, 2)}"></span> outstanding
+                </div>
+            </div>
+            <span class="text-red-700">→</span>
+        </div>
+    </a>
+
+    <!-- Supplier bills: outstanding but not overdue -->
+    <a href="/supplier-bills"
+       th:if="${overdueBillCount == 0 and outstandingBills != null and outstandingBills.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+       class="block bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 hover:border-amber-400">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-amber-700">Supplier Bills</div>
+                <div class="text-lg font-semibold text-amber-900">
+                    ₹<span th:text="${#numbers.formatDecimal(outstandingBills, 1, 2)}"></span> outstanding to suppliers
+                </div>
+            </div>
+            <span class="text-amber-700">→</span>
+        </div>
+    </a>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+        <h2 class="font-semibold mb-3" th:text="#{dashboard.top_medicines}">Top medicines · last 7 days</h2>
+        <div th:if="${#lists.isEmpty(dashboard.topMedicines7d)}" class="text-sm text-slate-500" th:text="#{dashboard.top_medicines_empty}">No sales recorded yet.</div>
+        <ol class="space-y-2">
+            <li th:each="t, iter : ${dashboard.topMedicines7d}"
+                class="flex items-center justify-between text-sm">
+                <span>
+                    <span class="text-slate-400 mr-2" th:text="${iter.count} + '.'"></span>
+                    <a th:href="@{/inventory/medicines/{id}(id=${t.medicineId})}" class="text-slate-800 hover:text-primary-600"
+                       th:text="${t.name}"></a>
+                </span>
+                <span class="font-medium text-slate-700" th:text="${t.quantitySold}"></span>
+            </li>
+        </ol>
+    </div>
+</section>
+</body>
+</html>

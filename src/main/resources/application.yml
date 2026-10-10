@@ -1,0 +1,48 @@
+server:
+  port: 8090
+  servlet:
+    session:
+      timeout: 8h
+
+spring:
+  application:
+    name: clinic-ops-app
+  datasource:
+    url: jdbc:postgresql://localhost:5432/clinic_ops
+    username: postgres
+    password: admin123
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Kolkata
+        format_sql: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  thymeleaf:
+    cache: false
+
+clinic:
+  uploads-dir: ${user.home}/clinic-ops-uploads
+  expiry-near-days: 90
+  expiry-critical-days: 30
+  low-stock-default: 10
+
+logging:
+  level:
+    root: INFO
+    com.clinicops: DEBUG
+    org.hibernate.SQL: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('New Sale')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'sale')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/sales" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">New Sale</h1>
+    </div>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+
+    <div th:if="${fromVisit}" class="mb-3 p-3 rounded-lg bg-primary-50 border border-primary-200 text-sm">
+        <div class="font-medium text-primary-900">Billing from prescription</div>
+        <div class="text-xs text-primary-700 mt-0.5">
+            <span th:text="${fromVisit.encounterNo}"></span> ·
+            quantities estimated from dosage + duration — please review.
+        </div>
+    </div>
+
+    <div th:if="${customSkipped}" class="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+        ⚠ <span th:text="${customSkipped}"></span> custom Rx item(s) skipped (not in inventory).
+        They are already queued in <a href="/procurement" class="underline">Procurement</a>.
+    </div>
+
+    <form th:action="@{/sales}" method="post" class="space-y-4 bg-white rounded-xl border border-slate-200 p-4"
+          x-data="saleForm()" x-init="initFromForm($el)"
+          th:data-patient-id="${patient != null ? patient.id : ''}"
+          th:data-patient-name="${patient != null ? patient.name : ''}"
+          th:data-patient-phone="${patient != null ? patient.phone : ''}"
+          th:data-payment-mode="${paymentMode}"
+          th:data-walkin-name="${walkInName}"
+          th:data-walkin-phone="${walkInPhone}"
+          th:data-bill-discount-type="${billDiscountType}"
+          th:data-bill-discount-value="${billDiscountValue}"
+          th:data-medicines="${medicinesJson}"
+          th:data-initial-lines="${initialLinesJson}">
+
+        <input type="hidden" name="patientId" :value="mode === 'patient' && picked ? picked.id : ''"/>
+        <input th:if="${fromVisit != null}" type="hidden" name="visitId" th:value="${fromVisit.id}"/>
+        <input type="hidden" name="walkInName" :value="mode === 'walkin' ? walkInName : ''"/>
+        <input type="hidden" name="walkInPhone" :value="mode === 'walkin' ? walkInPhone : ''"/>
+
+        <div th:if="${fromVisit == null}" class="grid grid-cols-2 bg-slate-100 rounded-lg p-1 text-sm">
+            <button type="button" @click="setMode('patient')"
+                    :class="mode === 'patient' ? 'bg-white shadow font-semibold text-primary-700' : 'text-slate-500'"
+                    class="py-2 rounded-md transition">Existing Patient</button>
+            <button type="button" @click="setMode('walkin')"
+                    :class="mode === 'walkin' ? 'bg-white shadow font-semibold text-primary-700' : 'text-slate-500'"
+                    class="py-2 rounded-md transition">Walk-in</button>
+        </div>
+
+        <div x-show="mode === 'patient'">
+            <label class="text-sm font-medium text-slate-700">Patient</label>
+
+            <div x-show="picked" class="mt-1 flex items-center justify-between bg-primary-50 rounded-lg p-3">
+                <div>
+                    <div class="font-medium" x-text="picked && picked.name"></div>
+                    <div class="text-xs text-primary-700" x-text="picked && picked.phone"></div>
+                </div>
+                <button type="button" @click="clearPatient()" class="text-xs text-slate-500 underline">change</button>
+            </div>
+
+            <div x-show="!picked" class="mt-1 relative">
+                <input type="search" placeholder="Search by name or phone"
+                       x-model="pquery" @input.debounce.250ms="searchPatient()"
+                       class="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                <ul x-show="presults.length > 0" x-cloak
+                    class="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow max-h-64 overflow-y-auto">
+                    <template x-for="r in presults" :key="r.id">
+                        <li>
+                            <button type="button" @click="pickPatient(r)"
+                                    class="w-full text-left px-3 py-2 hover:bg-primary-50 border-b border-slate-100 last:border-0">
+                                <div class="font-medium text-sm" x-text="r.name"></div>
+                                <div class="text-xs text-slate-500">
+                                    <span class="font-mono" x-text="r.mrn"></span>
+                                    <span x-text="' · ' + r.phone"></span>
+                                    <span x-show="r.age" x-text="' · ' + r.age + 'y'"></span>
+                                </div>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+                <div class="flex items-center justify-between mt-1">
+                    <p class="text-xs text-slate-400">Type 2+ characters to search.</p>
+                    <a href="/patients/new?returnTo=%2Fsales%2Fnew"
+                       class="text-xs text-primary-600 font-medium">+ Register patient</a>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="mode === 'walkin'" x-cloak class="space-y-3">
+            <div>
+                <label class="text-sm font-medium text-slate-700">Walk-in name <span class="text-slate-400 text-xs">(optional)</span></label>
+                <input type="text" x-model="walkInName" placeholder="e.g. Ramesh"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Phone <span class="text-slate-400 text-xs">(optional)</span></label>
+                <input type="tel" inputmode="numeric" x-model="walkInPhone"
+                       pattern="^[6-9][0-9]{9}$" maxlength="10" placeholder="9876543210"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                <p class="text-xs text-slate-400 mt-1">10-digit Indian mobile</p>
+            </div>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Payment</label>
+            <select name="paymentMode" x-model="paymentMode"
+                    class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700 block mb-2">Medicines</label>
+
+            <template x-for="(line, idx) in lines" :key="idx">
+                <div class="mb-2 bg-slate-50 rounded-lg p-2">
+                    <div class="flex gap-2 items-start">
+                        <div class="flex-1 relative">
+                            <input type="hidden" name="medicineId" :value="line.medicineId"/>
+
+                            <div x-show="line.medicineId"
+                                 class="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2">
+                                <span class="text-sm" x-text="line.medicineLabel || ('Medicine #' + line.medicineId)"></span>
+                                <button type="button" @click="changeMed(line)"
+                                        class="text-xs text-slate-500 underline">change</button>
+                            </div>
+
+                            <div x-show="!line.medicineId" class="relative">
+                                <input type="search" placeholder="Search medicine"
+                                       x-model="line.query" @input="searchMed(line)"
+                                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                                <ul x-show="line.results.length > 0" x-cloak
+                                    class="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow max-h-56 overflow-y-auto">
+                                    <template x-for="m in line.results" :key="m.id">
+                                        <li>
+                                            <button type="button" @click="pickMed(line, m)"
+                                                    class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 border-b border-slate-100 last:border-0"
+                                                    x-text="m.label"></button>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </div>
+                        <input name="quantity" type="number" min="1" inputmode="numeric" placeholder="Qty"
+                               x-model="line.quantity"
+                               class="w-20 px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                        <button type="button" @click="removeLine(idx)" x-show="lines.length > 1"
+                                class="text-red-500 px-2 self-center">✕</button>
+                    </div>
+
+                    <!-- Per-line discount (collapsible) -->
+                    <input type="hidden" name="lineDiscountType"  :value="line.discountType"/>
+                    <input type="hidden" name="lineDiscountValue" :value="line.discountValue"/>
+                    <div class="mt-1.5">
+                        <button type="button" x-show="!line.discountOpen" @click="line.discountOpen = true"
+                                class="text-xs text-primary-600">+ discount</button>
+                        <div x-show="line.discountOpen" x-cloak class="flex items-center gap-1.5">
+                            <span class="text-xs text-slate-500">Discount:</span>
+                            <select x-model="line.discountType"
+                                    class="text-xs px-1.5 py-1 rounded border border-slate-300 bg-white">
+                                <option value="AMOUNT">₹</option>
+                                <option value="PERCENT">%</option>
+                            </select>
+                            <input type="number" step="0.01" min="0" x-model="line.discountValue"
+                                   placeholder="0"
+                                   class="w-20 text-xs px-2 py-1 rounded border border-slate-300"/>
+                            <button type="button" @click="clearLineDiscount(line)"
+                                    class="text-xs text-slate-400 underline ml-1">clear</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <button type="button" @click="addLine()"
+                    class="text-primary-600 text-sm font-medium">+ Add another medicine</button>
+        </div>
+
+        <!-- Whole-bill discount -->
+        <div class="bg-slate-50 rounded-lg p-3">
+            <label class="text-sm font-medium text-slate-700">
+                Bill discount <span class="text-slate-400 text-xs">(optional, applied after line discounts)</span>
+            </label>
+            <div class="mt-2 flex items-center gap-2">
+                <select name="billDiscountType" x-model="billDiscountType"
+                        class="px-2 py-2 rounded-lg border border-slate-300 bg-white text-sm">
+                    <option value="AMOUNT">₹</option>
+                    <option value="PERCENT">%</option>
+                </select>
+                <input type="number" step="0.01" min="0"
+                       name="billDiscountValue" x-model="billDiscountValue"
+                       placeholder="0"
+                       class="w-32 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                <button type="button" @click="billDiscountValue = ''"
+                        x-show="billDiscountValue"
+                        class="text-xs text-slate-400 underline">clear</button>
+            </div>
+        </div>
+
+        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Record Sale
+        </button>
+    </form>
+
+<script>
+    function saleForm() {
+        return {
+            // --- mode toggle ---
+            mode: 'patient', // 'patient' or 'walkin'
+
+            // --- patient picker ---
+            picked: null,
+            pquery: '',
+            presults: [],
+            paymentMode: 'CASH',
+
+            // --- walk-in fields ---
+            walkInName: '',
+            walkInPhone: '',
+
+            // --- bill-level discount ---
+            billDiscountType: 'AMOUNT',
+            billDiscountValue: '',
+
+            // --- medicine catalog (filtered client-side) ---
+            allMedicines: [],
+
+            // --- line items ---
+            lines: [],
+
+            initFromForm(el) {
+                const pid = el.dataset.patientId;
+                if (pid) {
+                    this.picked = {
+                        id: pid,
+                        name: el.dataset.patientName || '',
+                        phone: el.dataset.patientPhone || ''
+                    };
+                }
+                this.paymentMode = el.dataset.paymentMode || 'CASH';
+                this.walkInName = el.dataset.walkinName || '';
+                this.walkInPhone = el.dataset.walkinPhone || '';
+                this.billDiscountType = el.dataset.billDiscountType || 'AMOUNT';
+                this.billDiscountValue = el.dataset.billDiscountValue || '';
+                // Determine initial mode: walk-in if walk-in fields present and no patient
+                if (!pid && (this.walkInName || this.walkInPhone)) {
+                    this.mode = 'walkin';
+                }
+
+                try { this.allMedicines = JSON.parse(el.dataset.medicines || '[]'); }
+                catch (e) { this.allMedicines = []; }
+
+                let initialLines = [];
+                try { initialLines = JSON.parse(el.dataset.initialLines || '[]'); }
+                catch (e) {}
+
+                if (initialLines.length > 0 && initialLines.some(l => l.medicineId || l.quantity)) {
+                    this.lines = initialLines.map(l =>
+                            this.makeLine(l.medicineId, l.quantity, l.discountType, l.discountValue));
+                } else {
+                    this.lines = [this.makeLine('', '', '', '')];
+                }
+            },
+
+            makeLine(medicineId, quantity, discountType, discountValue) {
+                const med = this.allMedicines.find(m => String(m.id) === String(medicineId));
+                const hasDisc = !!(discountType && discountValue);
+                return {
+                    medicineId: medicineId || '',
+                    medicineLabel: med ? med.label : '',
+                    quantity: quantity || '',
+                    query: '',
+                    results: [],
+                    discountType: discountType || 'AMOUNT',
+                    discountValue: discountValue || '',
+                    discountOpen: hasDisc
+                };
+            },
+
+            // --- patient ops ---
+            async searchPatient() {
+                if (!this.pquery || this.pquery.length < 2) { this.presults = []; return; }
+                try {
+                    const res = await fetch('/patients/search.json?q=' + encodeURIComponent(this.pquery));
+                    this.presults = res.ok ? await res.json() : [];
+                } catch (e) { this.presults = []; }
+            },
+            pickPatient(p) { this.picked = p; this.pquery = ''; this.presults = []; },
+            clearPatient() { this.picked = null; this.pquery = ''; this.presults = []; },
+            setMode(m) {
+                this.mode = m;
+                if (m === 'walkin') { this.picked = null; this.pquery = ''; this.presults = []; }
+                if (m === 'patient') { this.walkInName = ''; this.walkInPhone = ''; }
+            },
+
+            // --- medicine ops ---
+            searchMed(line) {
+                const q = (line.query || '').trim().toLowerCase();
+                if (!q) { line.results = []; return; }
+                line.results = this.allMedicines
+                    .filter(m => m.label.toLowerCase().includes(q))
+                    .slice(0, 8);
+            },
+            pickMed(line, m) {
+                line.medicineId = m.id;
+                line.medicineLabel = m.label;
+                line.query = '';
+                line.results = [];
+            },
+            changeMed(line) {
+                line.medicineId = '';
+                line.medicineLabel = '';
+                line.query = '';
+                line.results = [];
+            },
+
+            // --- line ops ---
+            addLine() { this.lines.push(this.makeLine('', '', '', '')); },
+            removeLine(i) { this.lines.splice(i, 1); },
+            clearLineDiscount(line) {
+                line.discountType = 'AMOUNT';
+                line.discountValue = '';
+                line.discountOpen = false;
+            }
+        };
+    }
+</script>
+</section>
+</body>
+</html>

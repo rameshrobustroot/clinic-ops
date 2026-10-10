@@ -1,0 +1,24 @@
+# Build artefacts (we rebuild inside the container)
+target/
+*.class
+*.jar
+
+# IDE / local
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.claude/
+
+# Git
+.git/
+.gitignore
+
+# Local data (we have a dedicated volume in compose)
+uploads/
+
+# Logs
+*.log
+
+# Local-only overrides
+application-local.yml

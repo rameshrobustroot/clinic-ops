@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="008-clinic-code" author="claude">
+        <addColumn tableName="clinic">
+            <column name="code" type="VARCHAR(64)"/>
+        </addColumn>
+        <!-- Backfill: use 'demo' + id for existing clinics -->
+        <sql>
+            UPDATE clinic SET code = 'demo' || id WHERE code IS NULL;
+        </sql>
+        <addNotNullConstraint tableName="clinic" columnName="code"/>
+        <addUniqueConstraint tableName="clinic" columnNames="code" constraintName="uk_clinic_code"/>
+    </changeSet>
+
+    <!-- Username must now be unique per clinic, not globally. -->
+    <changeSet id="008-app-user-username-per-clinic" author="claude">
+        <dropUniqueConstraint tableName="app_user" constraintName="app_user_username_key"/>
+        <addUniqueConstraint tableName="app_user" columnNames="clinic_id,username"
+                             constraintName="uk_appuser_clinic_username"/>
+    </changeSet>
+
+</databaseChangeLog>

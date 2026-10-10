@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="004-patient-mrn" author="claude">
+        <addColumn tableName="patient">
+            <column name="mrn" type="VARCHAR(32)"/>
+        </addColumn>
+        <createIndex tableName="patient" indexName="idx_patient_mrn" unique="true">
+            <column name="mrn"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="004-sale-bill-no" author="claude">
+        <addColumn tableName="sale">
+            <column name="bill_no" type="VARCHAR(32)"/>
+        </addColumn>
+        <createIndex tableName="sale" indexName="idx_sale_bill_no" unique="true">
+            <column name="bill_no"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="004-visit-encounter" author="claude">
+        <addColumn tableName="visit">
+            <column name="encounter_type" type="VARCHAR(8)" defaultValue="OPD">
+                <constraints nullable="false"/>
+            </column>
+            <column name="encounter_no" type="VARCHAR(32)"/>
+        </addColumn>
+        <createIndex tableName="visit" indexName="idx_visit_encounter_no" unique="true">
+            <column name="encounter_no"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Backfill: assign year-prefixed running numbers to existing rows. -->
+    <changeSet id="004-backfill-patient-mrn" author="claude" dbms="postgresql">
+        <sql splitStatements="false"><![CDATA[
+            WITH numbered AS (
+                SELECT id,
+                       EXTRACT(YEAR FROM created_at)::INT AS yr,
+                       row_number() OVER (PARTITION BY EXTRACT(YEAR FROM created_at) ORDER BY id) AS seq
+                FROM patient WHERE mrn IS NULL
+            )
+            UPDATE patient p
+            SET mrn = 'MRN-' || numbered.yr || '-' || LPAD(numbered.seq::TEXT, 5, '0')
+            FROM numbered WHERE p.id = numbered.id;
+        ]]></sql>
+    </changeSet>
+
+    <changeSet id="004-backfill-sale-bill-no" author="claude" dbms="postgresql">
+        <sql splitStatements="false"><![CDATA[
+            WITH numbered AS (
+                SELECT id,
+                       EXTRACT(YEAR FROM created_at)::INT AS yr,
+                       row_number() OVER (PARTITION BY EXTRACT(YEAR FROM created_at) ORDER BY id) AS seq
+                FROM sale WHERE bill_no IS NULL
+            )
+            UPDATE sale s
+            SET bill_no = 'BILL-' || numbered.yr || '-' || LPAD(numbered.seq::TEXT, 5, '0')
+            FROM numbered WHERE s.id = numbered.id;
+        ]]></sql>
+    </changeSet>
+
+    <changeSet id="004-backfill-visit-encounter-no" author="claude" dbms="postgresql">
+        <sql splitStatements="false"><![CDATA[
+            WITH numbered AS (
+                SELECT id,
+                       encounter_type,
+                       EXTRACT(YEAR FROM visit_date)::INT AS yr,
+                       row_number() OVER (
+                           PARTITION BY encounter_type, EXTRACT(YEAR FROM visit_date) ORDER BY id
+                       ) AS seq
+                FROM visit WHERE encounter_no IS NULL
+            )
+            UPDATE visit v
+            SET encounter_no = numbered.encounter_type || '-' || numbered.yr || '-' || LPAD(numbered.seq::TEXT, 5, '0')
+            FROM numbered WHERE v.id = numbered.id;
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>

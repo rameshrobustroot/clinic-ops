@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head th:replace="~{fragments/layout :: head('Visit')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'patients')}">
+<section>
+    <div class="flex items-center justify-between mb-3 gap-2">
+        <a th:href="@{/patients/{id}(id=${patient.id})}" class="text-primary-600">← <span th:text="${patient.name}"></span></a>
+        <div class="flex gap-2 flex-wrap justify-end">
+            <a th:href="@{/visits/{id}/edit(id=${visit.id})}"
+               class="text-sm bg-white border border-primary-300 text-primary-700 px-3 py-1.5 rounded-lg">Edit</a>
+            <a sec:authorize="hasAnyRole('OWNER','DOCTOR','PHARMACIST')" th:if="${existingBill == null and !#lists.isEmpty(rxItems)}"
+               th:href="@{/sales/new(fromVisit=${visit.id})}"
+               class="text-sm bg-primary-600 text-white px-3 py-1.5 rounded-lg">Bill Rx</a>
+            <a sec:authorize="hasAnyRole('OWNER','DOCTOR','PHARMACIST')" th:if="${existingBill != null}"
+               th:href="@{/sales/{id}(id=${existingBill.id})}"
+               class="text-sm bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-lg"
+               th:text="'✓ ' + ${existingBill.billNo}"></a>
+            <a th:href="@{/visits/{id}/prescription.pdf(id=${visit.id})}" target="_blank"
+               class="text-sm bg-slate-700 text-white px-3 py-1.5 rounded-lg">PDF</a>
+            <button type="button" class="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg whatsapp-btn"
+                    th:attr="data-phone=${patient.phone},
+                             data-message=|Hello ${patient.name}, your prescription from today’s visit: ${visit.prescriptionText ?: '(see attached)'}|">
+                WhatsApp
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-mono text-primary-700 bg-primary-50 px-2 py-0.5 rounded" th:text="${visit.encounterNo}"></span>
+            <span class="text-xs font-mono text-slate-400" th:text="${patient.mrn}"></span>
+        </div>
+        <p class="text-xs text-slate-400" th:text="${#temporals.format(visit.visitDate, 'EEEE, dd MMM yyyy · HH:mm')}"></p>
+
+        <div th:if="${doctor != null}" class="text-sm">
+            <span class="text-slate-500">Doctor: </span>
+            <span class="font-medium" th:text="'Dr ' + ${doctor.fullName}"></span>
+            <span th:if="${doctor.qualification != null and !doctor.qualification.isBlank()}"
+                  class="text-xs text-slate-400" th:text="' · ' + ${doctor.qualification}"></span>
+        </div>
+
+        <div th:if="${visit.diagnosis}">
+            <div class="text-xs uppercase tracking-wider text-slate-400">Diagnosis</div>
+            <p class="text-slate-800" th:text="${visit.diagnosis}"></p>
+        </div>
+
+        <div th:if="${visit.vitalBpSystolic != null or visit.vitalPulse != null or visit.vitalTemperatureF != null
+                      or visit.vitalSpo2 != null or visit.vitalRespiratoryRate != null
+                      or visit.vitalWeightKg != null or visit.vitalHeightCm != null
+                      or visit.vitalBloodGlucose != null}">
+            <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Vitals</div>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-sm bg-slate-50 rounded-lg p-3">
+                <div th:if="${visit.vitalBpSystolic != null or visit.vitalBpDiastolic != null}">
+                    <span class="text-slate-500">BP:</span>
+                    <span class="font-medium"
+                          th:text="(${visit.vitalBpSystolic} ?: '—') + ' / ' + (${visit.vitalBpDiastolic} ?: '—') + ' mmHg'"></span>
+                </div>
+                <div th:if="${visit.vitalPulse != null}">
+                    <span class="text-slate-500">Pulse:</span>
+                    <span class="font-medium" th:text="${visit.vitalPulse} + ' bpm'"></span>
+                </div>
+                <div th:if="${visit.vitalTemperatureF != null}">
+                    <span class="text-slate-500">Temp:</span>
+                    <span class="font-medium" th:text="${visit.vitalTemperatureF} + ' °F'"></span>
+                </div>
+                <div th:if="${visit.vitalSpo2 != null}">
+                    <span class="text-slate-500">SpO₂:</span>
+                    <span class="font-medium" th:text="${visit.vitalSpo2} + ' %'"></span>
+                </div>
+                <div th:if="${visit.vitalRespiratoryRate != null}">
+                    <span class="text-slate-500">Resp:</span>
+                    <span class="font-medium" th:text="${visit.vitalRespiratoryRate} + ' /min'"></span>
+                </div>
+                <div th:if="${visit.vitalWeightKg != null}">
+                    <span class="text-slate-500">Weight:</span>
+                    <span class="font-medium" th:text="${visit.vitalWeightKg} + ' kg'"></span>
+                </div>
+                <div th:if="${visit.vitalHeightCm != null}">
+                    <span class="text-slate-500">Height:</span>
+                    <span class="font-medium" th:text="${visit.vitalHeightCm} + ' cm'"></span>
+                </div>
+                <div th:if="${visit.vitalBmi != null}">
+                    <span class="text-slate-500">BMI:</span>
+                    <span class="font-medium" th:text="${visit.vitalBmi}"></span>
+                </div>
+                <div th:if="${visit.vitalBloodGlucose != null}" class="col-span-2">
+                    <span class="text-slate-500">CBG:</span>
+                    <span class="font-medium" th:text="${visit.vitalBloodGlucose} + ' mg/dL'"></span>
+                    <span th:if="${visit.vitalBloodGlucoseType}" class="text-xs text-slate-500"
+                          th:text="'(' + ${visit.vitalBloodGlucoseType} + ')'"></span>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${visit.notes}">
+            <div class="text-xs uppercase tracking-wider text-slate-400">Notes</div>
+            <p class="text-slate-800 whitespace-pre-line" th:text="${visit.notes}"></p>
+        </div>
+
+        <div th:if="${!#lists.isEmpty(rxItems)}">
+            <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Prescription</div>
+            <ul class="space-y-2">
+                <li th:each="r : ${rxItems}" class="bg-slate-50 rounded-lg p-3 text-sm">
+                    <div class="flex items-start justify-between">
+                        <div class="font-medium"
+                             th:text="${r.medicineId != null ? medNames[r.medicineId] : r.customName}"></div>
+                        <span th:if="${r.medicineId == null}" class="text-[10px] px-2 py-0.5 rounded-full chip-yellow">custom</span>
+                    </div>
+                    <div class="text-slate-600 mt-0.5 text-xs">
+                        <span th:if="${r.dosage}" th:text="${r.dosage}"></span>
+                        <span th:if="${r.frequency}" th:text="' · ' + ${r.frequency}"></span>
+                        <span th:if="${r.duration}" th:text="' · ' + ${r.duration}"></span>
+                    </div>
+                    <div th:if="${r.instructions}" class="text-slate-500 text-xs mt-1" th:text="${r.instructions}"></div>
+                </li>
+            </ul>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rxItems) and !#strings.isEmpty(visit.prescriptionText)}">
+            <div class="text-xs uppercase tracking-wider text-slate-400">Prescription</div>
+            <pre class="bg-slate-50 rounded-lg p-3 text-sm whitespace-pre-wrap font-mono" th:text="${visit.prescriptionText}"></pre>
+        </div>
+
+        <div th:if="${!#lists.isEmpty(investigations)}">
+            <div class="text-xs uppercase tracking-wider text-slate-400 mb-1">Investigations</div>
+            <ul class="space-y-1">
+                <li th:each="i : ${investigations}" class="bg-slate-50 rounded-lg p-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="font-medium" th:text="${i.name}"></span>
+                        <span class="text-xs px-2 py-0.5 rounded-full"
+                              th:classappend="${i.status.name() == 'COMPLETED'} ? 'chip-green'
+                                              : (${i.status.name() == 'CANCELLED'} ? 'chip-gray' : 'chip-yellow')"
+                              th:text="${i.status}"></span>
+                    </div>
+                    <div th:if="${i.instructions}" class="text-xs text-slate-500 mt-0.5" th:text="${i.instructions}"></div>
+                </li>
+            </ul>
+        </div>
+
+        <div th:if="${visit.prescriptionFile}">
+            <div class="text-xs uppercase tracking-wider text-slate-400">Attachment</div>
+            <a th:href="@{/visits/{id}/file(id=${visit.id})}" target="_blank"
+               class="inline-flex items-center gap-2 text-primary-600 underline">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.55-4.55a2 2 0 112.83 2.83L17.83 12.83M13 17l-4.55 4.55a2 2 0 11-2.83-2.83L10.17 14.17"/></svg>
+                Open file
+            </a>
+        </div>
+
+        <div th:if="${visit.followUpDate}">
+            <div class="text-xs uppercase tracking-wider text-slate-400">Follow-up</div>
+            <span class="inline-block px-2 py-1 rounded-full chip-yellow text-sm"
+                  th:text="${#temporals.format(visit.followUpDate, 'dd MMM yyyy')}"></span>
+        </div>
+    </div>
+</section>
+</body>
+</html>

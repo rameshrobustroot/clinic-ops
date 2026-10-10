@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(${medicine.id == null} ? 'New Medicine' : 'Edit Medicine')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'inventory')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/inventory" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold" th:text="${medicine.id == null} ? 'New Medicine' : 'Edit Medicine'">New Medicine</h1>
+    </div>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
+        <span th:text="${error}"></span>
+        <a th:if="${duplicateId}" th:href="@{/inventory/medicines/{id}(id=${duplicateId})}"
+           class="underline font-medium ml-1">Open existing →</a>
+    </div>
+
+    <!-- New → create endpoint; Edit → update endpoint (otherwise editing would create a duplicate). -->
+    <form th:action="${medicine.id == null} ? @{/inventory/medicines} : @{/inventory/medicines/{id}(id=${medicine.id})}" th:object="${medicine}" method="post"
+          class="space-y-4 bg-white rounded-xl border border-slate-200 p-4">
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Brand name *</label>
+            <input th:field="*{name}" required autofocus placeholder="Crocin"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Generic / Salt</label>
+            <input th:field="*{genericName}" placeholder="Paracetamol"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="text-sm font-medium text-slate-700">Strength</label>
+                <input th:field="*{strength}" placeholder="500mg"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Form</label>
+                <select th:field="*{form}"
+                        class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                    <option value="">—</option>
+                    <option value="TABLET">Tablet</option>
+                    <option value="CAPSULE">Capsule</option>
+                    <option value="SYRUP">Syrup</option>
+                    <option value="DROPS">Drops</option>
+                    <option value="INJECTION">Injection</option>
+                    <option value="OINTMENT">Ointment</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Manufacturer</label>
+            <input th:field="*{manufacturer}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="text-sm font-medium text-slate-700">Unit</label>
+                <select th:field="*{unit}"
+                        class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                    <option value="UNIT">unit</option>
+                    <option value="STRIP">strip</option>
+                    <option value="BOTTLE">bottle</option>
+                    <option value="VIAL">vial</option>
+                    <option value="BOX">box</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Low-stock alert</label>
+                <input th:field="*{lowStockThreshold}" type="number" min="0" inputmode="numeric"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            </div>
+        </div>
+
+        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Save Medicine
+        </button>
+    </form>
+</section>
+</body>
+</html>

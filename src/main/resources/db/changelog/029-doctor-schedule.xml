@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Doctor schedule configuration: booking mode + slot settings (one row per doctor).
+    -->
+    <changeSet id="029-doctor-schedule-config" author="clinic-ops">
+        <createTable tableName="doctor_schedule_config">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="clinic_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="doctor_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <!--
+              SLOT_BASED : patients book specific time slots
+              TOKEN_ONLY : sequential token queue, no fixed time
+            -->
+            <column name="booking_mode" type="VARCHAR(20)" defaultValue="SLOT_BASED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="slot_duration_minutes" type="INT" defaultValueNumeric="15">
+                <constraints nullable="false"/>
+            </column>
+            <!-- How many patients can share the same time slot (1 = exclusive) -->
+            <column name="max_per_slot" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Hard cap on total bookings per day; null = computed from working hours -->
+            <column name="max_per_day" type="INT"/>
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- One config row per doctor per clinic -->
+        <addUniqueConstraint tableName="doctor_schedule_config"
+                             columnNames="clinic_id,doctor_id"
+                             constraintName="uq_doctor_schedule_config"/>
+    </changeSet>
+
+    <!--
+      Doctor working hours: which days of the week and which hours each doctor is available.
+      Multiple rows per doctor (one per active day of week).
+    -->
+    <changeSet id="029-doctor-working-hours" author="clinic-ops">
+        <createTable tableName="doctor_working_hours">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="clinic_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="doctor_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <!--
+              ISO day of week: 1=Monday, 2=Tuesday, 3=Wednesday,
+              4=Thursday, 5=Friday, 6=Saturday, 7=Sunday
+            -->
+            <column name="day_of_week" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_time" type="TIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_time" type="TIME">
+                <constraints nullable="false"/>
+            </column>
+            <!-- false = doctor not available that day (vacation / day off override) -->
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- One row per doctor per day of week -->
+        <addUniqueConstraint tableName="doctor_working_hours"
+                             columnNames="clinic_id,doctor_id,day_of_week"
+                             constraintName="uq_doctor_working_hours_day"/>
+
+        <createIndex tableName="doctor_working_hours" indexName="idx_dwh_clinic_doctor">
+            <column name="clinic_id"/>
+            <column name="doctor_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Fix: SMALLINT causes Hibernate schema-validation mismatch with Java Integer → use INT -->
+    <changeSet id="029-fix-day-of-week-to-int" author="clinic-ops">
+        <modifyDataType tableName="doctor_working_hours"
+                        columnName="day_of_week"
+                        newDataType="INT"/>
+    </changeSet>
+
+</databaseChangeLog>

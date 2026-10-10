@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Master controlled-vocabulary lists for the Doctor form. Both are clinic-scoped
+         so each clinic curates its own values; common Indian defaults are seeded for
+         every existing clinic. -->
+
+    <changeSet id="018-create-medical-degree" author="claude">
+        <createTable tableName="medical_degree">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="clinic_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_degree_clinic" references="clinic(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="medical_degree" indexName="ux_degree_clinic_name" unique="true">
+            <column name="clinic_id"/>
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="018-create-medical-specialization" author="claude">
+        <createTable tableName="medical_specialization">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="clinic_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_spec_clinic" references="clinic(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="medical_specialization" indexName="ux_spec_clinic_name" unique="true">
+            <column name="clinic_id"/>
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Seed: insert each common degree for every existing clinic. CROSS JOIN style. -->
+    <changeSet id="018-seed-degrees" author="claude">
+        <sql splitStatements="true" stripComments="true">
+            INSERT INTO medical_degree (clinic_id, name)
+            SELECT c.id, d.name FROM clinic c CROSS JOIN (
+                SELECT 'MBBS'  AS name UNION ALL SELECT 'MD'    UNION ALL SELECT 'MS' UNION ALL
+                SELECT 'DM'           UNION ALL SELECT 'MCh'   UNION ALL SELECT 'DNB' UNION ALL
+                SELECT 'BDS'          UNION ALL SELECT 'MDS'   UNION ALL SELECT 'BAMS' UNION ALL
+                SELECT 'BHMS'         UNION ALL SELECT 'BUMS'  UNION ALL SELECT 'BSMS' UNION ALL
+                SELECT 'MRCP'         UNION ALL SELECT 'FRCS'  UNION ALL SELECT 'FRCP' UNION ALL
+                SELECT 'FACP'         UNION ALL SELECT 'FAMS'  UNION ALL SELECT 'FACS' UNION ALL
+                SELECT 'PG Diploma'   UNION ALL SELECT 'Fellowship'
+            ) d;
+        </sql>
+    </changeSet>
+
+    <changeSet id="018-seed-specializations" author="claude">
+        <sql splitStatements="true" stripComments="true">
+            INSERT INTO medical_specialization (clinic_id, name)
+            SELECT c.id, s.name FROM clinic c CROSS JOIN (
+                SELECT 'General Medicine' AS name UNION ALL SELECT 'General Surgery' UNION ALL
+                SELECT 'Pediatrics'              UNION ALL SELECT 'Cardiology' UNION ALL
+                SELECT 'Orthopedics'             UNION ALL SELECT 'Dermatology' UNION ALL
+                SELECT 'Obstetrics &amp; Gynaecology' UNION ALL SELECT 'Psychiatry' UNION ALL
+                SELECT 'ENT'                     UNION ALL SELECT 'Ophthalmology' UNION ALL
+                SELECT 'Radiology'               UNION ALL SELECT 'Pathology' UNION ALL
+                SELECT 'Anaesthesiology'         UNION ALL SELECT 'Urology' UNION ALL
+                SELECT 'Nephrology'              UNION ALL SELECT 'Oncology' UNION ALL
+                SELECT 'Endocrinology'           UNION ALL SELECT 'Gastroenterology' UNION ALL
+                SELECT 'Neurology'               UNION ALL SELECT 'Pulmonology' UNION ALL
+                SELECT 'Dental'                  UNION ALL SELECT 'Family Medicine' UNION ALL
+                SELECT 'Ayurveda'                UNION ALL SELECT 'Homeopathy'
+            ) s;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

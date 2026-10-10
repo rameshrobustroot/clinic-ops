@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Publish new terms version')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center gap-3 mb-3">
+        <a href="/platform/terms" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold">Publish new terms version</h1>
+    </div>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+
+    <div class="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-sm">
+        Once published, every clinic owner running an older version is gated at
+        <code>/terms/accept</code> until they re-accept. This is a one-way action — old
+        versions stay readable for audit.
+    </div>
+
+    <form th:action="@{/platform/terms}" method="post"
+          class="space-y-4 bg-white border border-slate-200 rounded-xl p-4">
+        <div>
+            <label class="text-sm font-medium text-slate-700">Version label *</label>
+            <input name="version" required maxlength="32" placeholder="2026-08-01"
+                   th:value="${formVersion}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none font-mono"/>
+            <p class="text-xs text-slate-400 mt-1">Use an ISO date so versions sort chronologically. Must be unique.</p>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Effective date *</label>
+            <input name="effectiveDate" type="date" required
+                   th:value="${formEffectiveDate ?: today}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+        <div>
+            <label class="text-sm font-medium text-slate-700">Body (HTML) *</label>
+            <textarea name="body" required rows="22"
+                      class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-xs font-mono"
+                      th:text="${formBody ?: latestBody}"></textarea>
+            <p class="text-xs text-slate-400 mt-1">
+                HTML is rendered as-is on <code>/terms</code>. The current version is pre-loaded so you can edit, not start over.
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <button type="submit"
+                    class="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg">
+                Publish
+            </button>
+            <a href="/platform/terms" class="text-slate-500 px-4 py-2 text-sm">Cancel</a>
+        </div>
+    </form>
+</section>
+</body>
+</html>

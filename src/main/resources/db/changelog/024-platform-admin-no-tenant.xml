@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Decouple PLATFORM_ADMIN users from any clinic. Previously the column was NOT NULL
+         so the superadmin was forced into clinic 1, which made them appear in clinic 1's
+         /users list. They now live with clinic_id = NULL and are excluded from every
+         clinic's user listing by the tenant-scoped finders. -->
+
+    <changeSet id="024-appuser-clinic-nullable" author="claude">
+        <dropNotNullConstraint tableName="app_user" columnName="clinic_id" columnDataType="BIGINT"/>
+    </changeSet>
+
+    <changeSet id="024-platform-admin-clinic-null" author="claude">
+        <sql>UPDATE app_user SET clinic_id = NULL WHERE role = 'PLATFORM_ADMIN'</sql>
+    </changeSet>
+
+</databaseChangeLog>

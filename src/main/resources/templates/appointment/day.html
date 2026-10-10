@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Schedule')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'schedule')}">
+<section>
+
+    <!-- ── Header: date navigation ──────────────────────────────────── -->
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+            <a th:href="@{/appointments(date=${prevDate})}"
+               class="text-slate-500 hover:text-primary-600 text-lg font-bold px-1">‹</a>
+            <div>
+                <h1 class="text-base font-semibold leading-tight"
+                    th:text="${#temporals.format(viewDate, 'EEE, dd MMM yyyy')}"></h1>
+                <span th:if="${viewDate == today}"
+                      class="text-[10px] uppercase tracking-wider text-primary-600 font-semibold">Today</span>
+            </div>
+            <a th:href="@{/appointments(date=${nextDate})}"
+               class="text-slate-500 hover:text-primary-600 text-lg font-bold px-1">›</a>
+            <a th:if="${viewDate != today}"
+               th:href="@{/appointments}"
+               class="ml-1 text-xs text-primary-600 border border-primary-300 rounded-full px-2 py-0.5 hover:bg-primary-50">Today</a>
+        </div>
+        <div class="flex gap-2">
+            <a th:href="@{/appointments/calendar}"
+               class="px-3 py-2 rounded-lg text-sm border border-slate-300 text-slate-600 hover:bg-slate-50">
+                <svg class="w-4 h-4 inline -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Calendar
+            </a>
+            <a th:href="@{/appointments/new(date=${viewDate})}"
+               class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">
+                + Book
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Summary pills ────────────────────────────────────────────── -->
+    <div class="flex gap-2 mb-3 flex-wrap">
+        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-medium"
+              th:text="${totalScheduled} + ' scheduled'"></span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-medium"
+              th:if="${totalArrived > 0}"
+              th:text="${totalArrived} + ' waiting'"></span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 font-medium"
+              th:if="${totalDone > 0}"
+              th:text="${totalDone} + ' done'"></span>
+    </div>
+
+    <!-- ── Doctor filter tabs ────────────────────────────────────────── -->
+    <div th:if="${!activeDoctors.isEmpty()}"
+         class="flex gap-1.5 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+        <a th:href="@{/appointments(date=${viewDate})}"
+           class="shrink-0 text-xs px-3 py-1.5 rounded-full font-medium"
+           th:classappend="${selectedDoctorId == null} ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'">
+            All
+            <span class="ml-1 opacity-70"
+                  th:text="'(' + ${allAppointments.size()} + ')'"></span>
+        </a>
+        <a th:each="doc : ${activeDoctors}"
+           th:href="@{/appointments(date=${viewDate}, doctorId=${doc.id})}"
+           class="shrink-0 text-xs px-3 py-1.5 rounded-full font-medium"
+           th:classappend="${selectedDoctorId == doc.id} ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'">
+            <span th:text="'Dr ' + ${#strings.abbreviate(doc.fullName, 20)}"></span>
+            <span class="ml-1 opacity-70"
+                  th:if="${countByDoctor.get(doc.id) != null}"
+                  th:text="'(' + ${countByDoctor.get(doc.id)} + ')'"></span>
+        </a>
+    </div>
+
+    <!-- ── Empty state ───────────────────────────────────────────────── -->
+    <div th:if="${appointments.isEmpty()}" class="text-center text-slate-400 py-16">
+        <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <p class="text-sm">No appointments for this day.</p>
+        <a th:href="@{/appointments/new(date=${viewDate})}"
+           class="mt-2 inline-block text-primary-600 text-sm font-medium">Book one →</a>
+    </div>
+
+    <!-- ── Appointment cards ─────────────────────────────────────────── -->
+    <ul th:if="${!appointments.isEmpty()}" class="space-y-2">
+        <li th:each="appt : ${appointments}"
+            th:classappend="${appt.terminal} ? 'opacity-60' : ''"
+            class="bg-white border border-slate-200 rounded-xl p-3">
+
+            <div class="flex items-start gap-3">
+
+                <!-- Token badge -->
+                <div class="shrink-0 w-9 h-9 rounded-full bg-primary-50 border border-primary-100
+                            flex items-center justify-center text-sm font-bold text-primary-700">
+                    <span th:text="${appt.tokenNo != null ? appt.tokenNo : '–'}"></span>
+                </div>
+
+                <!-- Main info -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <!-- Patient name -->
+                        <span class="font-medium truncate"
+                              th:text="${patientById.containsKey(appt.patientId)
+                                       ? patientById.get(appt.patientId).name
+                                       : appt.patientName ?: '—'}"></span>
+                        <!-- Status badge -->
+                        <span th:switch="${appt.status}" class="shrink-0">
+                            <span th:case="'SCHEDULED'"
+                                  class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">Scheduled</span>
+                            <span th:case="'ARRIVED'"
+                                  class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Waiting</span>
+                            <span th:case="'IN_PROGRESS'"
+                                  class="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">In Consult</span>
+                            <span th:case="'DONE'"
+                                  class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Done</span>
+                            <span th:case="'CANCELLED'"
+                                  class="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">Cancelled</span>
+                            <span th:case="'NO_SHOW'"
+                                  class="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-400 font-semibold">No-show</span>
+                        </span>
+                    </div>
+
+                    <!-- Sub-line: phone · doctor · time -->
+                    <div class="text-xs text-slate-500 mt-0.5 flex flex-wrap gap-x-2">
+                        <span th:if="${appt.patientPhone}"
+                              th:text="${appt.patientPhone}"></span>
+                        <span th:if="${doctorById.containsKey(appt.doctorId)}"
+                              th:text="'Dr ' + ${doctorById.get(appt.doctorId).fullName}"></span>
+                        <span th:if="${appt.appointmentTime != null}"
+                              class="font-mono"
+                              th:text="${#temporals.format(appt.appointmentTime, 'hh:mm a')}"></span>
+                    </div>
+
+                    <!-- Reason -->
+                    <p th:if="${appt.reason}"
+                       class="text-xs text-slate-400 mt-1 truncate"
+                       th:text="${appt.reason}"></p>
+                </div>
+            </div>
+
+            <!-- Action buttons — only for non-terminal states -->
+            <div th:if="${!appt.terminal}"
+                 class="mt-2.5 pt-2.5 border-t border-slate-100 flex flex-wrap gap-2">
+
+                <!-- SCHEDULED → can Mark Arrived or Cancel -->
+                <th:block th:if="${appt.status == 'SCHEDULED'}">
+                    <form th:action="@{/appointments/{id}/status(id=${appt.id})}" method="post" class="m-0">
+                        <input type="hidden" name="to" value="ARRIVED"/>
+                        <input type="hidden" name="date" th:value="${viewDate}"/>
+                        <button type="submit"
+                                class="text-xs px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium">
+                            Mark Arrived
+                        </button>
+                    </form>
+                    <form th:action="@{/appointments/{id}/status(id=${appt.id})}" method="post" class="m-0">
+                        <input type="hidden" name="to" value="NO_SHOW"/>
+                        <input type="hidden" name="date" th:value="${viewDate}"/>
+                        <button type="submit"
+                                class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">
+                            No-show
+                        </button>
+                    </form>
+                    <form th:action="@{/appointments/{id}/status(id=${appt.id})}" method="post" class="m-0 ml-auto">
+                        <input type="hidden" name="to" value="CANCELLED"/>
+                        <input type="hidden" name="date" th:value="${viewDate}"/>
+                        <button type="submit"
+                                class="text-xs px-3 py-1.5 rounded-lg text-red-500 hover:text-red-700">
+                            Cancel
+                        </button>
+                    </form>
+                </th:block>
+
+                <!-- ARRIVED → Start Consultation -->
+                <th:block th:if="${appt.status == 'ARRIVED'}">
+                    <form th:action="@{/appointments/{id}/status(id=${appt.id})}" method="post" class="m-0">
+                        <input type="hidden" name="to" value="IN_PROGRESS"/>
+                        <input type="hidden" name="date" th:value="${viewDate}"/>
+                        <button type="submit"
+                                class="text-xs px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium">
+                            Start Consult
+                        </button>
+                    </form>
+                    <!-- Quick-link to new visit pre-filled with patient -->
+                    <a th:if="${appt.patientId != null}"
+                       th:href="@{/visits/new(patientId=${appt.patientId}, doctorId=${appt.doctorId}, appointmentId=${appt.id})}"
+                       class="text-xs px-3 py-1.5 rounded-lg border border-primary-300 text-primary-600 hover:bg-primary-50 font-medium">
+                        Open Visit →
+                    </a>
+                    <form th:action="@{/appointments/{id}/status(id=${appt.id})}" method="post" class="m-0 ml-auto">
+                        <input type="hidden" name="to" value="CANCELLED"/>
+                        <input type="hidden" name="date" th:value="${viewDate}"/>
+                        <button type="submit" class="text-xs text-red-500 hover:text-red-700 px-2">Cancel</button>
+                    </form>
+                </th:block>
+
+                <!-- IN_PROGRESS → Done -->
+                <th:block th:if="${appt.status == 'IN_PROGRESS'}">
+                    <form th:action="@{/appointments/{id}/status(id=${appt.id})}" method="post" class="m-0">
+                        <input type="hidden" name="to" value="DONE"/>
+                        <input type="hidden" name="date" th:value="${viewDate}"/>
+                        <button type="submit"
+                                class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
+                            Mark Done
+                        </button>
+                    </form>
+                    <a th:if="${appt.patientId != null}"
+                       th:href="@{/visits/new(patientId=${appt.patientId}, doctorId=${appt.doctorId}, appointmentId=${appt.id})}"
+                       class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                        Open Visit →
+                    </a>
+                </th:block>
+            </div>
+        </li>
+    </ul>
+
+</section>
+</body>
+</html>

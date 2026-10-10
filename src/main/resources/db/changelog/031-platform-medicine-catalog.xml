@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        Platform medicine catalog — two-tier design:
+
+          clinic_id = NULL  →  Platform medicine: visible to EVERY clinic automatically.
+                               Managed here (or future platform-admin UI).
+                               Adding a new drug = one INSERT with clinic_id = NULL.
+
+          clinic_id = <id>  →  Clinic-private medicine: only visible to that clinic.
+                               Created by clinic staff via the "+ Medicine" UI button.
+
+        Schema changes
+        ──────────────
+        • Allow NULL on medicine.clinic_id (NULLs already satisfy the FK in PostgreSQL).
+        • Replace the unique index with one based on COALESCE(clinic_id, 0) so that
+          two platform medicines with the same name+strength deduplicate correctly
+          (plain NULLs are DISTINCT in PostgreSQL unique indexes — COALESCE fixes that).
+        • Remove any stale zero-stock per-clinic medicines left over from earlier
+          development seeding (safe: no stock ⇒ no prescriptions, no sales either).
+
+        All INSERTs use ON CONFLICT DO NOTHING for idempotency.
+    -->
+
+    <changeSet id="031-platform-medicine-catalog" author="claude">
+        <sql splitStatements="false">
+
+-- ── Schema ────────────────────────────────────────────────────────────────────
+
+ALTER TABLE medicine ALTER COLUMN clinic_id DROP NOT NULL;
+
+DROP INDEX IF EXISTS idx_medicine_clinic_name_strength_mfg;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_medicine_clinic_name_strength_mfg
+    ON medicine (
+        COALESCE(clinic_id, 0),
+        lower(name),
+        lower(COALESCE(strength, '')),
+        lower(COALESCE(manufacturer, ''))
+    )
+    WHERE active = true;
+
+-- ── Data cleanup (dev debt) ───────────────────────────────────────────────────
+-- Remove per-clinic medicine copies that have no stock, no prescriptions,
+-- no sales — these are remnants of earlier seed-data experiments and carry
+-- zero value now that the platform catalog replaces them.
+
+DELETE FROM medicine
+WHERE  clinic_id IS NOT NULL
+  AND  NOT EXISTS (SELECT 1 FROM stock_batch       WHERE medicine_id = medicine.id)
+  AND  NOT EXISTS (SELECT 1 FROM prescription_item  WHERE medicine_id = medicine.id)
+  AND  NOT EXISTS (SELECT 1 FROM sale_item           WHERE medicine_id = medicine.id);
+
+-- ── Platform medicine catalog ─────────────────────────────────────────────────
+-- ~237 commonly dispensed medicines in India, grouped by therapeutic category.
+-- To add a new medicine: INSERT with clinic_id = NULL, ON CONFLICT DO NOTHING.
+
+-- 1. Analgesics and Antipyretics
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Paracetamol 500','Paracetamol','500mg','TABLET','STRIP',50),
+  (NULL,'Paracetamol 650','Paracetamol','650mg','TABLET','STRIP',50),
+  (NULL,'Ibuprofen 200','Ibuprofen','200mg','TABLET','STRIP',30),
+  (NULL,'Ibuprofen 400','Ibuprofen','400mg','TABLET','STRIP',30),
+  (NULL,'Combiflam','Ibuprofen + Paracetamol','400mg+325mg','TABLET','STRIP',30),
+  (NULL,'Diclofenac 50','Diclofenac Sodium','50mg','TABLET','STRIP',20),
+  (NULL,'Aceclofenac 100','Aceclofenac','100mg','TABLET','STRIP',20),
+  (NULL,'Aceclofenac + Paracetamol','Aceclofenac + Paracetamol','100mg+325mg','TABLET','STRIP',20),
+  (NULL,'Naproxen 250','Naproxen','250mg','TABLET','STRIP',20),
+  (NULL,'Naproxen 500','Naproxen','500mg','TABLET','STRIP',20),
+  (NULL,'Mefenamic Acid 250','Mefenamic Acid','250mg','TABLET','STRIP',20),
+  (NULL,'Mefenamic Acid 500','Mefenamic Acid','500mg','TABLET','STRIP',20),
+  (NULL,'Aspirin 75','Acetylsalicylic Acid','75mg','TABLET','STRIP',30),
+  (NULL,'Aspirin 150','Acetylsalicylic Acid','150mg','TABLET','STRIP',20),
+  (NULL,'Aspirin 325','Acetylsalicylic Acid','325mg','TABLET','STRIP',20),
+  (NULL,'Nimesulide 100','Nimesulide','100mg','TABLET','STRIP',20),
+  (NULL,'Tramadol 50','Tramadol Hydrochloride','50mg','CAPSULE','STRIP',10),
+  (NULL,'Ketorolac 10','Ketorolac Tromethamine','10mg','TABLET','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 2. Antibiotics
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Amoxicillin 250','Amoxicillin','250mg','CAPSULE','STRIP',20),
+  (NULL,'Amoxicillin 500','Amoxicillin','500mg','CAPSULE','STRIP',20),
+  (NULL,'Amoxicillin + Clavulanate','Amoxicillin + Clavulanic Acid','625mg','TABLET','STRIP',15),
+  (NULL,'Azithromycin 250','Azithromycin','250mg','TABLET','STRIP',15),
+  (NULL,'Azithromycin 500','Azithromycin','500mg','TABLET','STRIP',15),
+  (NULL,'Ciprofloxacin 250','Ciprofloxacin','250mg','TABLET','STRIP',15),
+  (NULL,'Ciprofloxacin 500','Ciprofloxacin','500mg','TABLET','STRIP',15),
+  (NULL,'Doxycycline 100','Doxycycline Hyclate','100mg','CAPSULE','STRIP',15),
+  (NULL,'Metronidazole 200','Metronidazole','200mg','TABLET','STRIP',20),
+  (NULL,'Metronidazole 400','Metronidazole','400mg','TABLET','STRIP',20),
+  (NULL,'Cephalexin 250','Cephalexin','250mg','CAPSULE','STRIP',15),
+  (NULL,'Cephalexin 500','Cephalexin','500mg','CAPSULE','STRIP',15),
+  (NULL,'Cefixime 200','Cefixime','200mg','TABLET','STRIP',15),
+  (NULL,'Cefuroxime 250','Cefuroxime Axetil','250mg','TABLET','STRIP',10),
+  (NULL,'Cefuroxime 500','Cefuroxime Axetil','500mg','TABLET','STRIP',10),
+  (NULL,'Levofloxacin 250','Levofloxacin','250mg','TABLET','STRIP',10),
+  (NULL,'Levofloxacin 500','Levofloxacin','500mg','TABLET','STRIP',10),
+  (NULL,'Ofloxacin 200','Ofloxacin','200mg','TABLET','STRIP',10),
+  (NULL,'Norfloxacin 400','Norfloxacin','400mg','TABLET','STRIP',10),
+  (NULL,'Co-trimoxazole 480','Trimethoprim + Sulfamethoxazole','480mg','TABLET','STRIP',10),
+  (NULL,'Clarithromycin 250','Clarithromycin','250mg','TABLET','STRIP',10),
+  (NULL,'Clarithromycin 500','Clarithromycin','500mg','TABLET','STRIP',10),
+  (NULL,'Erythromycin 250','Erythromycin','250mg','TABLET','STRIP',10),
+  (NULL,'Clindamycin 300','Clindamycin','300mg','CAPSULE','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 3. Antacids and GI
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Omeprazole 20','Omeprazole','20mg','CAPSULE','STRIP',30),
+  (NULL,'Omeprazole 40','Omeprazole','40mg','CAPSULE','STRIP',20),
+  (NULL,'Pantoprazole 20','Pantoprazole','20mg','TABLET','STRIP',25),
+  (NULL,'Pantoprazole 40','Pantoprazole','40mg','TABLET','STRIP',25),
+  (NULL,'Rabeprazole 20','Rabeprazole','20mg','TABLET','STRIP',20),
+  (NULL,'Esomeprazole 20','Esomeprazole','20mg','TABLET','STRIP',20),
+  (NULL,'Esomeprazole 40','Esomeprazole','40mg','TABLET','STRIP',20),
+  (NULL,'Ranitidine 150','Ranitidine','150mg','TABLET','STRIP',20),
+  (NULL,'Domperidone 10','Domperidone','10mg','TABLET','STRIP',20),
+  (NULL,'Metoclopramide 10','Metoclopramide','10mg','TABLET','STRIP',15),
+  (NULL,'Ondansetron 4','Ondansetron','4mg','TABLET','STRIP',15),
+  (NULL,'Ondansetron 8','Ondansetron','8mg','TABLET','STRIP',15),
+  (NULL,'Loperamide 2','Loperamide','2mg','TABLET','STRIP',15),
+  (NULL,'Sucralfate 1g','Sucralfate','1g','TABLET','STRIP',10),
+  (NULL,'Dicyclomine 10','Dicyclomine','10mg','TABLET','STRIP',15),
+  (NULL,'Simethicone 40','Simethicone','40mg','TABLET','STRIP',10),
+  (NULL,'ORS Sachet','Oral Rehydration Salts',NULL,'SACHET','SACHET',20),
+  (NULL,'Zinc 20','Zinc Sulphate','20mg','TABLET','STRIP',15),
+  (NULL,'Lactulose Syrup','Lactulose','10g/15ml','SYRUP','BOTTLE',5),
+  (NULL,'Isabgol Husk','Psyllium Husk','3.5g/dose','POWDER','BOTTLE',5)
+ON CONFLICT DO NOTHING;
+
+-- 4. Antidiabetics
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Metformin 500','Metformin Hydrochloride','500mg','TABLET','STRIP',30),
+  (NULL,'Metformin 850','Metformin Hydrochloride','850mg','TABLET','STRIP',20),
+  (NULL,'Metformin 1000','Metformin Hydrochloride','1000mg','TABLET','STRIP',20),
+  (NULL,'Glipizide 5','Glipizide','5mg','TABLET','STRIP',15),
+  (NULL,'Glimepiride 1','Glimepiride','1mg','TABLET','STRIP',15),
+  (NULL,'Glimepiride 2','Glimepiride','2mg','TABLET','STRIP',15),
+  (NULL,'Glimepiride + Metformin','Glimepiride + Metformin','2mg+500mg','TABLET','STRIP',15),
+  (NULL,'Sitagliptin 50','Sitagliptin','50mg','TABLET','STRIP',10),
+  (NULL,'Sitagliptin 100','Sitagliptin','100mg','TABLET','STRIP',10),
+  (NULL,'Voglibose 0.2','Voglibose','0.2mg','TABLET','STRIP',10),
+  (NULL,'Voglibose 0.3','Voglibose','0.3mg','TABLET','STRIP',10),
+  (NULL,'Pioglitazone 15','Pioglitazone','15mg','TABLET','STRIP',10),
+  (NULL,'Pioglitazone 30','Pioglitazone','30mg','TABLET','STRIP',10),
+  (NULL,'Empagliflozin 10','Empagliflozin','10mg','TABLET','STRIP',10),
+  (NULL,'Empagliflozin 25','Empagliflozin','25mg','TABLET','STRIP',10),
+  (NULL,'Dapagliflozin 10','Dapagliflozin','10mg','TABLET','STRIP',10),
+  (NULL,'Teneligliptin 20','Teneligliptin','20mg','TABLET','STRIP',10),
+  (NULL,'Gliclazide 30','Gliclazide','30mg','TABLET','STRIP',10),
+  (NULL,'Gliclazide 60','Gliclazide','60mg','TABLET','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 5. Antihypertensives
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Amlodipine 2.5','Amlodipine Besylate','2.5mg','TABLET','STRIP',20),
+  (NULL,'Amlodipine 5','Amlodipine Besylate','5mg','TABLET','STRIP',30),
+  (NULL,'Amlodipine 10','Amlodipine Besylate','10mg','TABLET','STRIP',20),
+  (NULL,'Telmisartan 20','Telmisartan','20mg','TABLET','STRIP',15),
+  (NULL,'Telmisartan 40','Telmisartan','40mg','TABLET','STRIP',20),
+  (NULL,'Telmisartan 80','Telmisartan','80mg','TABLET','STRIP',15),
+  (NULL,'Telmisartan + Amlodipine','Telmisartan + Amlodipine','40mg+5mg','TABLET','STRIP',15),
+  (NULL,'Losartan 25','Losartan Potassium','25mg','TABLET','STRIP',15),
+  (NULL,'Losartan 50','Losartan Potassium','50mg','TABLET','STRIP',15),
+  (NULL,'Enalapril 5','Enalapril Maleate','5mg','TABLET','STRIP',15),
+  (NULL,'Enalapril 10','Enalapril Maleate','10mg','TABLET','STRIP',15),
+  (NULL,'Ramipril 2.5','Ramipril','2.5mg','TABLET','STRIP',15),
+  (NULL,'Ramipril 5','Ramipril','5mg','TABLET','STRIP',15),
+  (NULL,'Ramipril 10','Ramipril','10mg','TABLET','STRIP',10),
+  (NULL,'Atenolol 25','Atenolol','25mg','TABLET','STRIP',20),
+  (NULL,'Atenolol 50','Atenolol','50mg','TABLET','STRIP',20),
+  (NULL,'Metoprolol 25','Metoprolol Succinate','25mg','TABLET','STRIP',15),
+  (NULL,'Metoprolol 50','Metoprolol Succinate','50mg','TABLET','STRIP',15),
+  (NULL,'Bisoprolol 2.5','Bisoprolol Fumarate','2.5mg','TABLET','STRIP',15),
+  (NULL,'Bisoprolol 5','Bisoprolol Fumarate','5mg','TABLET','STRIP',15),
+  (NULL,'Carvedilol 3.125','Carvedilol','3.125mg','TABLET','STRIP',10),
+  (NULL,'Carvedilol 6.25','Carvedilol','6.25mg','TABLET','STRIP',10),
+  (NULL,'Hydrochlorothiazide 12.5','Hydrochlorothiazide','12.5mg','TABLET','STRIP',15),
+  (NULL,'Hydrochlorothiazide 25','Hydrochlorothiazide','25mg','TABLET','STRIP',15),
+  (NULL,'Nifedipine 10','Nifedipine','10mg','TABLET','STRIP',10),
+  (NULL,'Clonidine 0.1','Clonidine Hydrochloride','0.1mg','TABLET','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 6. Lipid-lowering
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Atorvastatin 10','Atorvastatin Calcium','10mg','TABLET','STRIP',20),
+  (NULL,'Atorvastatin 20','Atorvastatin Calcium','20mg','TABLET','STRIP',20),
+  (NULL,'Atorvastatin 40','Atorvastatin Calcium','40mg','TABLET','STRIP',15),
+  (NULL,'Atorvastatin 80','Atorvastatin Calcium','80mg','TABLET','STRIP',10),
+  (NULL,'Rosuvastatin 5','Rosuvastatin Calcium','5mg','TABLET','STRIP',15),
+  (NULL,'Rosuvastatin 10','Rosuvastatin Calcium','10mg','TABLET','STRIP',20),
+  (NULL,'Rosuvastatin 20','Rosuvastatin Calcium','20mg','TABLET','STRIP',15),
+  (NULL,'Fenofibrate 145','Fenofibrate','145mg','TABLET','STRIP',10),
+  (NULL,'Ezetimibe 10','Ezetimibe','10mg','TABLET','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 7. Antihistamines and Respiratory
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Cetirizine 5','Cetirizine Hydrochloride','5mg','TABLET','STRIP',20),
+  (NULL,'Cetirizine 10','Cetirizine Hydrochloride','10mg','TABLET','STRIP',30),
+  (NULL,'Levocetirizine 5','Levocetirizine Dihydrochloride','5mg','TABLET','STRIP',20),
+  (NULL,'Loratadine 10','Loratadine','10mg','TABLET','STRIP',15),
+  (NULL,'Fexofenadine 120','Fexofenadine Hydrochloride','120mg','TABLET','STRIP',15),
+  (NULL,'Fexofenadine 180','Fexofenadine Hydrochloride','180mg','TABLET','STRIP',15),
+  (NULL,'Chlorpheniramine 4','Chlorpheniramine Maleate','4mg','TABLET','STRIP',15),
+  (NULL,'Montelukast 5','Montelukast Sodium','5mg','TABLET','STRIP',15),
+  (NULL,'Montelukast 10','Montelukast Sodium','10mg','TABLET','STRIP',20),
+  (NULL,'Montelukast + Levocetirizine','Montelukast + Levocetirizine','10mg+5mg','TABLET','STRIP',15),
+  (NULL,'Salbutamol 2','Salbutamol Sulphate','2mg','TABLET','STRIP',15),
+  (NULL,'Salbutamol 4','Salbutamol Sulphate','4mg','TABLET','STRIP',15),
+  (NULL,'Theophylline 100','Theophylline','100mg','TABLET','STRIP',10),
+  (NULL,'Theophylline 200','Theophylline','200mg','TABLET','STRIP',10),
+  (NULL,'Ambroxol 30','Ambroxol Hydrochloride','30mg','TABLET','STRIP',15),
+  (NULL,'Bromhexine 8','Bromhexine Hydrochloride','8mg','TABLET','STRIP',10),
+  (NULL,'Guaifenesin Syrup','Guaifenesin','100mg/5ml','SYRUP','BOTTLE',8),
+  (NULL,'Levosalbutamol + Ambroxol','Levosalbutamol + Ambroxol','1mg+30mg','SYRUP','BOTTLE',5),
+  (NULL,'Dextromethorphan + CPM','Dextromethorphan + Chlorpheniramine','10mg+2mg','SYRUP','BOTTLE',5),
+  (NULL,'Nasivion Nasal Drops','Oxymetazoline','0.05%','DROPS','BOTTLE',8)
+ON CONFLICT DO NOTHING;
+
+-- 8. Vitamins and Supplements
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Vitamin C 500','Ascorbic Acid','500mg','TABLET','STRIP',20),
+  (NULL,'Vitamin D3 60000 IU','Cholecalciferol','60000 IU','CAPSULE','STRIP',15),
+  (NULL,'Vitamin D3 1000 IU','Cholecalciferol','1000 IU','TABLET','STRIP',15),
+  (NULL,'Vitamin B12 1500','Methylcobalamin','1500mcg','TABLET','STRIP',20),
+  (NULL,'Folic Acid 5','Folic Acid','5mg','TABLET','STRIP',20),
+  (NULL,'Iron 100','Ferrous Sulphate','100mg','TABLET','STRIP',20),
+  (NULL,'Iron + Folic Acid','Ferrous Sulphate + Folic Acid','100mg+0.5mg','TABLET','STRIP',20),
+  (NULL,'Calcium + Vit D3','Calcium Carbonate + Cholecalciferol','500mg+250IU','TABLET','STRIP',20),
+  (NULL,'Zinc Sulphate 20','Zinc Sulphate','20mg','TABLET','STRIP',15),
+  (NULL,'Multivitamin','Multivitamin + Multimineral',NULL,'TABLET','STRIP',15),
+  (NULL,'Vitamin B Complex','Vitamin B Complex',NULL,'CAPSULE','STRIP',15),
+  (NULL,'Biotin 5','Biotin','5mg','TABLET','STRIP',10),
+  (NULL,'Omega-3 1000','Omega-3 Fatty Acids','1000mg','CAPSULE','STRIP',10),
+  (NULL,'Magnesium Oxide 400','Magnesium Oxide','400mg','TABLET','STRIP',10),
+  (NULL,'Lycopene + Zinc','Lycopene + Zinc + Selenium',NULL,'CAPSULE','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 9. Thyroid
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Levothyroxine 25','Levothyroxine Sodium','25mcg','TABLET','STRIP',20),
+  (NULL,'Levothyroxine 50','Levothyroxine Sodium','50mcg','TABLET','STRIP',20),
+  (NULL,'Levothyroxine 75','Levothyroxine Sodium','75mcg','TABLET','STRIP',15),
+  (NULL,'Levothyroxine 100','Levothyroxine Sodium','100mcg','TABLET','STRIP',15),
+  (NULL,'Levothyroxine 125','Levothyroxine Sodium','125mcg','TABLET','STRIP',10),
+  (NULL,'Carbimazole 5','Carbimazole','5mg','TABLET','STRIP',10),
+  (NULL,'Carbimazole 10','Carbimazole','10mg','TABLET','STRIP',10),
+  (NULL,'Propylthiouracil 50','Propylthiouracil','50mg','TABLET','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 10. Antifungals
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Fluconazole 150','Fluconazole','150mg','CAPSULE','STRIP',10),
+  (NULL,'Fluconazole 50','Fluconazole','50mg','CAPSULE','STRIP',10),
+  (NULL,'Itraconazole 100','Itraconazole','100mg','CAPSULE','STRIP',10),
+  (NULL,'Itraconazole 200','Itraconazole','200mg','CAPSULE','STRIP',10),
+  (NULL,'Terbinafine 250','Terbinafine','250mg','TABLET','STRIP',10),
+  (NULL,'Ketoconazole 200','Ketoconazole','200mg','TABLET','STRIP',10),
+  (NULL,'Clotrimazole Cream','Clotrimazole','1%','CREAM','TUBE',5),
+  (NULL,'Ketoconazole Cream','Ketoconazole','2%','CREAM','TUBE',5)
+ON CONFLICT DO NOTHING;
+
+-- 11. Topical
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Betamethasone Cream','Betamethasone Valerate','0.1%','CREAM','TUBE',5),
+  (NULL,'Mupirocin Ointment','Mupirocin','2%','OINTMENT','TUBE',5),
+  (NULL,'Hydrocortisone Cream','Hydrocortisone','1%','CREAM','TUBE',5),
+  (NULL,'Diclofenac Gel','Diclofenac Diethylamine','1%','GEL','TUBE',8),
+  (NULL,'Ketoprofen Gel','Ketoprofen','2.5%','GEL','TUBE',5),
+  (NULL,'Povidone Iodine Ointment','Povidone Iodine','5%','OINTMENT','TUBE',5),
+  (NULL,'Framycetin Cream','Framycetin Sulphate','1%','CREAM','TUBE',5),
+  (NULL,'Calamine Lotion','Calamine','15%','LOTION','BOTTLE',5),
+  (NULL,'Silver Sulfadiazine Cream','Silver Sulfadiazine','1%','CREAM','TUBE',5),
+  (NULL,'Permethrin Cream','Permethrin','5%','CREAM','TUBE',5)
+ON CONFLICT DO NOTHING;
+
+-- 12. Eye preparations
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Ciprofloxacin Eye Drops','Ciprofloxacin','0.3%','DROPS','BOTTLE',5),
+  (NULL,'Moxifloxacin Eye Drops','Moxifloxacin','0.5%','DROPS','BOTTLE',5),
+  (NULL,'Tropicamide Eye Drops','Tropicamide','1%','DROPS','BOTTLE',5),
+  (NULL,'CMC Eye Drops','Carboxymethylcellulose Sodium','0.5%','DROPS','BOTTLE',8),
+  (NULL,'Latanoprost Eye Drops','Latanoprost','0.005%','DROPS','BOTTLE',5),
+  (NULL,'Timolol Eye Drops','Timolol Maleate','0.5%','DROPS','BOTTLE',5),
+  (NULL,'Dexamethasone Eye Drops','Dexamethasone','0.1%','DROPS','BOTTLE',5),
+  (NULL,'Tobramycin Eye Drops','Tobramycin','0.3%','DROPS','BOTTLE',5)
+ON CONFLICT DO NOTHING;
+
+-- 13. CNS / Psychiatric
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Alprazolam 0.25','Alprazolam','0.25mg','TABLET','STRIP',10),
+  (NULL,'Alprazolam 0.5','Alprazolam','0.5mg','TABLET','STRIP',10),
+  (NULL,'Clonazepam 0.25','Clonazepam','0.25mg','TABLET','STRIP',10),
+  (NULL,'Clonazepam 0.5','Clonazepam','0.5mg','TABLET','STRIP',10),
+  (NULL,'Escitalopram 5','Escitalopram Oxalate','5mg','TABLET','STRIP',10),
+  (NULL,'Escitalopram 10','Escitalopram Oxalate','10mg','TABLET','STRIP',10),
+  (NULL,'Sertraline 25','Sertraline Hydrochloride','25mg','TABLET','STRIP',10),
+  (NULL,'Sertraline 50','Sertraline Hydrochloride','50mg','TABLET','STRIP',10),
+  (NULL,'Amitriptyline 10','Amitriptyline Hydrochloride','10mg','TABLET','STRIP',10),
+  (NULL,'Amitriptyline 25','Amitriptyline Hydrochloride','25mg','TABLET','STRIP',10),
+  (NULL,'Olanzapine 5','Olanzapine','5mg','TABLET','STRIP',10),
+  (NULL,'Olanzapine 10','Olanzapine','10mg','TABLET','STRIP',10),
+  (NULL,'Risperidone 1','Risperidone','1mg','TABLET','STRIP',10),
+  (NULL,'Risperidone 2','Risperidone','2mg','TABLET','STRIP',10),
+  (NULL,'Gabapentin 100','Gabapentin','100mg','CAPSULE','STRIP',10),
+  (NULL,'Gabapentin 300','Gabapentin','300mg','CAPSULE','STRIP',10),
+  (NULL,'Pregabalin 75','Pregabalin','75mg','CAPSULE','STRIP',10),
+  (NULL,'Pregabalin 150','Pregabalin','150mg','CAPSULE','STRIP',10),
+  (NULL,'Melatonin 3','Melatonin','3mg','TABLET','STRIP',10),
+  (NULL,'Zolpidem 5','Zolpidem Tartrate','5mg','TABLET','STRIP',5),
+  (NULL,'Diazepam 5','Diazepam','5mg','TABLET','STRIP',5)
+ON CONFLICT DO NOTHING;
+
+-- 14. Cardiac and Diuretics
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Digoxin 0.25','Digoxin','0.25mg','TABLET','STRIP',10),
+  (NULL,'Clopidogrel 75','Clopidogrel Bisulphate','75mg','TABLET','STRIP',20),
+  (NULL,'Warfarin 1','Warfarin Sodium','1mg','TABLET','STRIP',10),
+  (NULL,'Warfarin 2','Warfarin Sodium','2mg','TABLET','STRIP',10),
+  (NULL,'Nitroglycerin SL','Glyceryl Trinitrate','0.5mg','TABLET','STRIP',10),
+  (NULL,'Isosorbide Mononitrate 20','Isosorbide Mononitrate','20mg','TABLET','STRIP',10),
+  (NULL,'Furosemide 20','Furosemide','20mg','TABLET','STRIP',15),
+  (NULL,'Furosemide 40','Furosemide','40mg','TABLET','STRIP',15),
+  (NULL,'Spironolactone 25','Spironolactone','25mg','TABLET','STRIP',10),
+  (NULL,'Spironolactone 50','Spironolactone','50mg','TABLET','STRIP',10),
+  (NULL,'Torsemide 10','Torsemide','10mg','TABLET','STRIP',10),
+  (NULL,'Rivaroxaban 10','Rivaroxaban','10mg','TABLET','STRIP',10),
+  (NULL,'Rivaroxaban 20','Rivaroxaban','20mg','TABLET','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 15. Corticosteroids
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Prednisolone 5','Prednisolone','5mg','TABLET','STRIP',20),
+  (NULL,'Prednisolone 10','Prednisolone','10mg','TABLET','STRIP',15),
+  (NULL,'Prednisolone 20','Prednisolone','20mg','TABLET','STRIP',10),
+  (NULL,'Dexamethasone 0.5','Dexamethasone','0.5mg','TABLET','STRIP',10),
+  (NULL,'Methylprednisolone 4','Methylprednisolone','4mg','TABLET','STRIP',10),
+  (NULL,'Methylprednisolone 8','Methylprednisolone','8mg','TABLET','STRIP',10),
+  (NULL,'Betamethasone 0.5','Betamethasone','0.5mg','TABLET','STRIP',10)
+ON CONFLICT DO NOTHING;
+
+-- 16. Urology and Others
+INSERT INTO medicine (clinic_id, name, generic_name, strength, form, unit, low_stock_threshold) VALUES
+  (NULL,'Tamsulosin 0.4','Tamsulosin Hydrochloride','0.4mg','CAPSULE','STRIP',10),
+  (NULL,'Silodosin 4','Silodosin','4mg','CAPSULE','STRIP',10),
+  (NULL,'Finasteride 5','Finasteride','5mg','TABLET','STRIP',10),
+  (NULL,'Dutasteride 0.5','Dutasteride','0.5mg','CAPSULE','STRIP',10),
+  (NULL,'Allopurinol 100','Allopurinol','100mg','TABLET','STRIP',15),
+  (NULL,'Allopurinol 300','Allopurinol','300mg','TABLET','STRIP',10),
+  (NULL,'Colchicine 0.5','Colchicine','0.5mg','TABLET','STRIP',10),
+  (NULL,'Hydroxychloroquine 200','Hydroxychloroquine Sulphate','200mg','TABLET','STRIP',10),
+  (NULL,'Methotrexate 2.5','Methotrexate','2.5mg','TABLET','STRIP',5),
+  (NULL,'Baclofen 10','Baclofen','10mg','TABLET','STRIP',10),
+  (NULL,'Sildenafil 25','Sildenafil Citrate','25mg','TABLET','STRIP',5),
+  (NULL,'Sildenafil 50','Sildenafil Citrate','50mg','TABLET','STRIP',5)
+ON CONFLICT DO NOTHING;
+
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

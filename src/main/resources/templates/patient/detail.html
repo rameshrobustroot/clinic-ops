@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head th:replace="~{fragments/layout :: head('Patient')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'patients')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <a href="/patients" class="text-primary-600">← Patients</a>
+        <a th:href="@{/patients/{id}/edit(id=${patient.id})}" class="text-sm text-primary-600">Edit</a>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+        <div class="flex items-start justify-between">
+            <div>
+                <div class="text-xs font-mono text-primary-700 bg-primary-50 inline-block px-2 py-0.5 rounded mb-1"
+                     th:text="${patient.mrn}"></div>
+                <h1 class="text-xl font-semibold" th:text="${patient.name}"></h1>
+                <p class="text-slate-500 text-sm" th:text="${patient.phone}"></p>
+                <p class="text-xs text-slate-400 mt-1">
+                    <span th:if="${patient.age != null}" th:text="${patient.age} + ' yrs'"></span>
+                    <span th:if="${patient.gender}" th:text="' · ' + ${patient.gender}"></span>
+                </p>
+            </div>
+            <button type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-3 py-1.5 rounded-lg whatsapp-btn"
+                    th:attr="data-phone=${patient.phone}, data-message=|Hello ${patient.name},|">
+                WhatsApp
+            </button>
+        </div>
+        <p th:if="${patient.allergies}" class="mt-3 text-sm text-amber-700 bg-amber-50 px-2 py-1 rounded">
+            ⚠ Allergies: <span th:text="${patient.allergies}"></span>
+        </p>
+        <p th:if="${patient.notes}" class="mt-2 text-sm text-slate-600" th:text="${patient.notes}"></p>
+    </div>
+
+    <div class="flex items-center justify-between mb-2">
+        <h2 class="font-semibold">Visit history</h2>
+        <div class="flex gap-2">
+            <a sec:authorize="hasAnyRole('OWNER','DOCTOR','PHARMACIST')"
+               th:href="@{/sales/new(patientId=${patient.id})}"
+               class="bg-primary-600 text-white text-sm px-3 py-1.5 rounded-lg">+ Sale</a>
+            <a sec:authorize="hasAnyRole('OWNER','DOCTOR','RECEPTIONIST')"
+               th:href="@{/visits/new(patientId=${patient.id})}"
+               class="bg-primary-700 text-white text-sm px-3 py-1.5 rounded-lg">+ Visit</a>
+        </div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(visits)}" class="text-center text-slate-500 py-8">
+        No visits yet.
+    </div>
+
+    <ul class="space-y-2">
+        <li th:each="v : ${visits}"
+            class="bg-white border border-slate-200 rounded-xl p-3 hover:border-primary-400 relative">
+            <a th:href="@{/visits/{id}(id=${v.id})}" class="block">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-mono text-slate-500" th:text="${v.encounterNo}"></div>
+                        <div class="text-sm font-medium text-slate-700"
+                             th:text="${#temporals.format(v.visitDate, 'dd MMM yyyy, HH:mm')}"></div>
+                    </div>
+                    <span th:if="${v.followUpDate}" class="text-xs px-2 py-0.5 rounded-full chip-yellow"
+                          th:text="'follow-up ' + ${#temporals.format(v.followUpDate, 'dd MMM')}"></span>
+                </div>
+                <div class="text-sm text-slate-600 mt-1 line-clamp-2" th:text="${v.diagnosis}"></div>
+            </a>
+            <a th:if="${visitBillNo[v.id] != null}"
+               class="absolute right-3 bottom-2 text-xs text-emerald-700 font-medium font-mono"
+               th:text="'✓ ' + ${visitBillNo[v.id]}"></a>
+            <a sec:authorize="hasAnyRole('OWNER','DOCTOR','PHARMACIST')"
+               th:if="${visitBillNo[v.id] == null and visitHasRx[v.id]}"
+               th:href="@{/sales/new(fromVisit=${v.id})}"
+               class="absolute right-3 bottom-2 text-xs text-primary-600 font-medium">Bill →</a>
+        </li>
+    </ul>
+
+    <!-- Billing is OWNER / DOCTOR / PHARMACIST only (SaleController); receptionists don't see bills. -->
+    <th:block sec:authorize="hasAnyRole('OWNER','DOCTOR','PHARMACIST')">
+    <h2 class="font-semibold mt-6 mb-2">Sales history</h2>
+    <div th:if="${#lists.isEmpty(sales)}" class="text-center text-slate-500 py-6 text-sm">
+        No sales recorded for this patient.
+    </div>
+    <ul class="space-y-2">
+        <li th:each="s : ${sales}">
+            <a th:href="@{/sales/{id}(id=${s.id})}"
+               class="block bg-white border border-slate-200 rounded-xl p-3 hover:border-primary-400">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-mono text-slate-500" th:text="${s.billNo}"></div>
+                        <div class="text-xs text-slate-400"
+                             th:text="${#temporals.format(s.createdAt, 'dd MMM yyyy, HH:mm')} + ' · ' + ${s.paymentMode}"></div>
+                    </div>
+                    <div class="font-semibold" th:text="'₹' + ${s.totalAmount}"></div>
+                </div>
+            </a>
+        </li>
+    </ul>
+    </th:block>
+</section>
+</body>
+</html>

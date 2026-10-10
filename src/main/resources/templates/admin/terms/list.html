@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Terms versions')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+            <a href="/settings" class="text-primary-600">←</a>
+            <h1 class="text-xl font-semibold">Terms versions</h1>
+        </div>
+        <a href="/platform/terms/new"
+           class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">+ Publish new</a>
+    </div>
+
+    <p class="text-sm text-slate-500 mb-4">
+        Each row is a published version. When a new version is published, all clinic owners
+        running an older version are prompted to re-accept on their next request.
+    </p>
+
+    <div th:if="${current != null}" class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-sm">
+        <strong class="text-emerald-800">Current:</strong>
+        <span class="font-mono" th:text="${current.version}"></span>
+        &middot; effective <span th:text="${#temporals.format(current.effectiveDate, 'dd MMM yyyy')}"></span>
+        &middot; published <span th:text="${#temporals.format(current.publishedAt, 'dd MMM yyyy, HH:mm')}"></span>
+        &middot; <a th:href="@{/platform/terms/{id}(id=${current.id})}" class="text-primary-600 underline">view</a>
+        &middot; <a href="/terms" target="_blank" class="text-primary-600 underline">public page</a>
+    </div>
+
+    <ul class="space-y-2">
+        <li th:each="d : ${versions}"
+            class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between">
+            <div>
+                <div class="font-mono text-sm font-medium" th:text="${d.version}"></div>
+                <div class="text-xs text-slate-500">
+                    effective <span th:text="${#temporals.format(d.effectiveDate, 'dd MMM yyyy')}"></span>
+                    &middot; published <span th:text="${#temporals.format(d.publishedAt, 'dd MMM yyyy, HH:mm')}"></span>
+                </div>
+            </div>
+            <a th:href="@{/platform/terms/{id}(id=${d.id})}" class="text-xs text-primary-600">View →</a>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

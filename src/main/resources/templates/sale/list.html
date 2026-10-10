@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(#{sale.list.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'sale')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <h1 class="text-xl font-semibold" th:text="#{sale.list.title}">Sales</h1>
+        <a href="/sales/new"
+           class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700"
+           th:text="#{sale.list.new}">+ New Sale</a>
+    </div>
+
+    <div th:if="${#lists.isEmpty(sales)}" class="text-center text-slate-500 py-12">
+        <p class="mb-2" th:text="#{sale.list.empty}">No sales recorded yet.</p>
+        <a href="/sales/new" class="text-primary-600 font-medium" th:text="#{sale.list.record_first}">Record a sale →</a>
+    </div>
+
+    <ul class="space-y-2">
+        <li th:each="s : ${sales}">
+            <a th:href="@{/sales/{id}(id=${s.id})}"
+               class="block bg-white border border-slate-200 rounded-xl p-3 hover:border-primary-400">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-mono text-sm font-medium text-slate-700" th:text="${s.billNo}"></div>
+                        <div class="text-xs text-slate-500"
+                             th:with="who=${s.patientId != null ? (patientNames[s.patientId] ?: 'Patient #' + s.patientId)
+                                                                : (s.walkInName != null ? s.walkInName + ' (walk-in)' : 'Walk-in')}"
+                             th:text="${who} + ' · ' + ${#temporals.format(s.createdAt, 'dd MMM, HH:mm')}"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold" th:text="'₹' + ${s.totalAmount}"></div>
+                        <div class="text-xs text-slate-400" th:text="${s.paymentMode}"></div>
+                    </div>
+                </div>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Pagination -->
+    <div th:if="${totalPages != null and totalPages > 1}"
+         class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-sm">
+        <a th:if="${hasPrev}" th:href="@{/sales(page=${pageNo - 1})}" class="text-primary-600">← Previous</a>
+        <span th:unless="${hasPrev}" class="text-slate-300">← Previous</span>
+        <span class="text-xs text-slate-500"
+              th:text="'Page ' + (${pageNo} + 1) + ' of ' + ${totalPages} + ' · ' + ${totalElements} + ' total'"></span>
+        <a th:if="${hasNext}" th:href="@{/sales(page=${pageNo + 1})}" class="text-primary-600">Next →</a>
+        <span th:unless="${hasNext}" class="text-slate-300">Next →</span>
+    </div>
+</section>
+</body>
+</html>

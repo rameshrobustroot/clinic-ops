@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(#{users.list.title})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'settings')}">
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+            <a href="/settings" class="text-primary-600">←</a>
+            <h1 class="text-xl font-semibold" th:text="#{users.list.title}">Users</h1>
+        </div>
+        <a href="/users/new"
+           class="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary-700"
+           th:text="#{users.list.add}">+ Add</a>
+    </div>
+
+    <ul class="space-y-2">
+        <li th:each="u : ${users}"
+            class="bg-white border border-slate-200 rounded-xl p-3"
+            x-data="{ showReset: false }">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="font-medium" th:text="${u.fullName}"></div>
+                    <div class="text-xs text-slate-500">
+                        <span th:text="${u.username}"></span>
+                        · <span th:text="${u.role}"></span>
+                        <span th:if="${u.phone}" th:text="' · ' + ${u.phone}"></span>
+                    </div>
+                </div>
+                <form th:action="@{/users/{id}/toggle(id=${u.id})}" method="post" class="m-0">
+                    <input type="hidden" name="enabled" th:value="${!u.enabled}"/>
+                    <button type="submit"
+                            th:classappend="${u.enabled} ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500 bg-slate-100'"
+                            class="text-xs px-2 py-1 rounded-full">
+                        <span th:text="${u.enabled} ? 'Active' : 'Disabled'"></span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="flex gap-2 mt-2 pt-2 border-t border-slate-100">
+                <button type="button" @click="showReset = !showReset"
+                        class="text-xs text-primary-600">Reset password</button>
+            </div>
+            <form th:action="@{/users/{id}/reset-password(id=${u.id})}" method="post"
+                  x-show="showReset" x-cloak
+                  class="mt-2 flex gap-2 items-center bg-slate-50 rounded-lg p-2">
+                <input type="password" name="newPassword" placeholder="New password (min 6)"
+                       minlength="6" required
+                       class="flex-1 px-2 py-1.5 rounded border border-slate-300 text-sm"/>
+                <button type="submit"
+                        class="bg-primary-600 text-white px-3 py-1.5 rounded text-xs font-medium"
+                        onclick="return confirm('Reset this user\u2019s password? Old password will no longer work.')">
+                    Set
+                </button>
+            </form>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

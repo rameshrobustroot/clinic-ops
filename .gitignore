@@ -1,0 +1,15 @@
+target/
+*.class
+*.jar
+*.war
+.idea/
+*.iml
+.vscode/
+.DS_Store
+uploads/*
+!uploads/.gitkeep
+application-local.yml
+*.log
+
+# Claude Code per-user settings (launch.json is shared and stays tracked)
+.claude/settings.local.json

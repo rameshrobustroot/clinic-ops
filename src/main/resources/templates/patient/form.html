@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head(#{patient.form.title.new})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'patients')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/patients" class="text-primary-600">←</a>
+        <h1 class="text-xl font-semibold"
+            th:text="${patientId != null} ? #{patient.form.title.edit} : #{patient.form.title.new}"></h1>
+    </div>
+
+    <form th:action="${patientId != null} ? @{/patients/{id}(id=${patientId})} : @{/patients}"
+          method="post" th:object="${form}" class="space-y-4 bg-white rounded-xl border border-slate-200 p-4">
+        <input th:if="${returnTo != null}" type="hidden" name="returnTo" th:value="${returnTo}"/>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Name *</label>
+            <input th:field="*{name}" required autofocus
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="text-xs text-red-600 mt-1"></p>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Phone *</label>
+            <input th:field="*{phone}" type="tel" inputmode="numeric" required
+                   pattern="^[6-9][0-9]{9}$" maxlength="10" minlength="10"
+                   placeholder="9876543210"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p class="text-xs text-slate-400 mt-1">10-digit Indian mobile</p>
+            <p th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}" class="text-xs text-red-600 mt-1"></p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="text-sm font-medium text-slate-700">Age</label>
+                <input th:field="*{age}" type="number" min="0" max="130" inputmode="numeric"
+                       class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                <p th:if="${#fields.hasErrors('age')}" th:errors="*{age}" class="text-xs text-red-600 mt-1"></p>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Gender</label>
+                <select th:field="*{gender}"
+                        class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                    <option value="">—</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Allergies</label>
+            <input th:field="*{allergies}" placeholder="e.g. Penicillin"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Address</label>
+            <input th:field="*{address}"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Notes</label>
+            <textarea th:field="*{notes}" rows="2"
+                      class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Save
+        </button>
+    </form>
+</section>
+</body>
+</html>

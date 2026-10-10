@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Discount support — both per-line and whole-bill.
+         Type = PERCENT or AMOUNT; value = the raw % or ₹ entered;
+         amount = the resolved ₹ off (rounded to 2dp). -->
+
+    <changeSet id="016-sale-item-discount" author="claude">
+        <addColumn tableName="sale_item">
+            <column name="gross_amount" type="DECIMAL(12,2)"/>
+            <column name="discount_type" type="VARCHAR(10)"/>
+            <column name="discount_value" type="DECIMAL(10,2)"/>
+            <column name="discount_amount" type="DECIMAL(12,2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <!-- Backfill: existing rows had no discount, so gross == line_total. -->
+        <sql>UPDATE sale_item SET gross_amount = line_total WHERE gross_amount IS NULL</sql>
+        <addNotNullConstraint tableName="sale_item" columnName="gross_amount" columnDataType="DECIMAL(12,2)"/>
+    </changeSet>
+
+    <changeSet id="016-sale-discount" author="claude">
+        <addColumn tableName="sale">
+            <column name="subtotal_amount" type="DECIMAL(12,2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bill_discount_type" type="VARCHAR(10)"/>
+            <column name="bill_discount_value" type="DECIMAL(10,2)"/>
+            <column name="bill_discount_amount" type="DECIMAL(12,2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <!-- Backfill: existing rows had no discount, so subtotal == total. -->
+        <sql>UPDATE sale SET subtotal_amount = total_amount WHERE subtotal_amount = 0</sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head th:replace="~{fragments/layout :: head(#{visit.form.title.new})}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'patients')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a th:href="@{/patients/{id}(id=${patient.id})}" class="text-primary-600">←</a>
+        <div>
+            <h1 class="text-xl font-semibold"
+                th:text="${visit != null} ? #{visit.form.title.edit} : #{visit.form.title.new}"></h1>
+            <p class="text-sm text-slate-500">
+                <span th:text="${patient.name} + ' · ' + ${patient.phone}"></span>
+                <span th:if="${visit != null}" class="font-mono text-xs ml-2" th:text="${visit.encounterNo}"></span>
+            </p>
+        </div>
+    </div>
+
+    <div th:if="${error}" class="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm" th:text="${error}"></div>
+
+    <form th:action="${visit != null} ? @{/visits/{id}(id=${visit.id})} : @{/visits}"
+          method="post" enctype="multipart/form-data"
+          class="space-y-4 bg-white rounded-xl border border-slate-200 p-4"
+          x-data="visitForm()" x-init="initFromForm($el)"
+          th:data-medicines="${medicinesJson}"
+          th:data-initial-lines="${initialLinesJson}"
+          th:data-initial-investigations="${initialInvestigationsJson}"
+          th:data-master-investigations="${masterInvestigationsJson}"
+          th:data-can-edit-clinical="${canEditClinical}">
+        <input th:if="${visit == null}" type="hidden" name="patientId" th:value="${patient.id}"/>
+
+        <!-- Consulting doctor — required. Auto-selected when the clinic has just one practitioner. -->
+        <div>
+            <label class="text-sm font-medium text-slate-700">Consulting doctor</label>
+            <select name="doctorId" required
+                    class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <option value="">— Select doctor —</option>
+                <option th:each="d : ${doctors}"
+                        th:value="${d.id}"
+                        th:text="${'Dr ' + d.fullName + (d.qualification != null and !d.qualification.isBlank() ? ' · ' + d.qualification : '')}"
+                        th:selected="${selectedDoctorId != null and selectedDoctorId == d.id}"></option>
+            </select>
+            <p th:if="${doctors == null or doctors.isEmpty()}"
+               class="text-xs text-amber-700 mt-1">
+                No doctors set up yet. Add a doctor in <a href="/users" class="underline">Users</a>.
+            </p>
+        </div>
+
+        <!-- Tab bar — Vitals (intake) vs Consultation (diagnosis, Rx, etc.) -->
+        <div class="grid grid-cols-2 bg-slate-100 rounded-lg p-1 text-sm">
+            <button type="button" @click="tab = 'reception'"
+                    :class="tab === 'reception' ? 'bg-white shadow font-semibold text-primary-700' : 'text-slate-500'"
+                    class="py-2 rounded-md transition flex items-center justify-center gap-1.5">
+                <span>🩺</span> <span th:text="#{visit.tab.vitals}">Vitals</span>
+            </button>
+            <button type="button" @click="tab = 'clinical'"
+                    :class="tab === 'clinical' ? 'bg-white shadow font-semibold text-primary-700' : 'text-slate-500'"
+                    class="py-2 rounded-md transition flex items-center justify-center gap-1.5">
+                <span>💊</span> <span th:text="#{visit.tab.consultation}">Consultation</span>
+            </button>
+        </div>
+
+        <!-- ====== Reception tab — vitals ====== -->
+        <div x-show="tab === 'reception'" x-cloak class="space-y-4">
+
+        <!-- Vitals (captured first, usually by the receptionist) -->
+        <div x-data="{
+                       w: /*[[${visit != null ? visit.vitalWeightKg : ''}]]*/ '',
+                       h: /*[[${visit != null ? visit.vitalHeightCm : ''}]]*/ '',
+                       bmi() {
+                         const wn = parseFloat(this.w); const hn = parseFloat(this.h);
+                         if (!wn || !hn || hn <= 0) return '';
+                         const m = hn / 100; return (wn / (m * m)).toFixed(1);
+                       } }">
+            <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2">Vitals (all optional)</div>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+                <div class="flex items-center gap-1">
+                    <input name="vitalBpSystolic" type="number" min="50" max="300" inputmode="numeric" placeholder="SYS"
+                           th:value="${visit != null ? visit.vitalBpSystolic : ''}"
+                           class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-slate-400">/</span>
+                    <input name="vitalBpDiastolic" type="number" min="30" max="200" inputmode="numeric" placeholder="DIA"
+                           th:value="${visit != null ? visit.vitalBpDiastolic : ''}"
+                           class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-xs text-slate-400 pl-1">BP</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <input name="vitalPulse" type="number" min="30" max="250" inputmode="numeric" placeholder="Pulse"
+                           th:value="${visit != null ? visit.vitalPulse : ''}"
+                           class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-xs text-slate-400 pl-1">bpm</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <input name="vitalTemperatureF" type="number" step="0.1" min="90" max="110" inputmode="decimal" placeholder="Temp"
+                           th:value="${visit != null ? visit.vitalTemperatureF : ''}"
+                           class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-xs text-slate-400 pl-1">°F</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <input name="vitalSpo2" type="number" min="50" max="100" inputmode="numeric" placeholder="SpO₂"
+                           th:value="${visit != null ? visit.vitalSpo2 : ''}"
+                           class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-xs text-slate-400 pl-1">%</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <input name="vitalRespiratoryRate" type="number" min="5" max="60" inputmode="numeric" placeholder="Resp"
+                           th:value="${visit != null ? visit.vitalRespiratoryRate : ''}"
+                           class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-xs text-slate-400 pl-1">/min</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <input name="vitalWeightKg" type="number" step="0.1" min="0" inputmode="decimal" placeholder="Weight"
+                           x-model="w" class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-xs text-slate-400 pl-1">kg</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <input name="vitalHeightCm" type="number" step="0.1" min="30" max="250" inputmode="decimal" placeholder="Height"
+                           x-model="h" class="w-full px-2 py-2 rounded-lg border border-slate-300"/>
+                    <span class="text-xs text-slate-400 pl-1">cm</span>
+                </div>
+                <div class="col-span-2" x-show="bmi()">
+                    <span class="text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded inline-block"
+                          x-text="'BMI: ' + bmi()"></span>
+                </div>
+                <div class="flex items-center gap-1 col-span-2">
+                    <input name="vitalBloodGlucose" type="number" min="20" max="800" inputmode="numeric" placeholder="CBG"
+                           th:value="${visit != null ? visit.vitalBloodGlucose : ''}"
+                           class="flex-1 px-2 py-2 rounded-lg border border-slate-300"/>
+                    <select name="vitalBloodGlucoseType"
+                            class="px-2 py-2 rounded-lg border border-slate-300 text-sm">
+                        <option value="">—</option>
+                        <option value="FASTING" th:selected="${visit != null and visit.vitalBloodGlucoseType == 'FASTING'}">Fasting</option>
+                        <option value="PP" th:selected="${visit != null and visit.vitalBloodGlucoseType == 'PP'}">Post-prandial</option>
+                        <option value="RANDOM" th:selected="${visit != null and visit.vitalBloodGlucoseType == 'RANDOM'}">Random</option>
+                    </select>
+                    <span class="text-xs text-slate-400 pl-1">mg/dL</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hand-off hint to the doctor — only relevant when on the Reception tab -->
+        <button type="button" @click="tab = 'clinical'"
+                class="w-full text-sm text-primary-600 font-medium border border-dashed border-primary-300 rounded-lg py-2 hover:bg-primary-50">
+            Next: Consultation →
+        </button>
+
+        </div><!-- /Reception tab -->
+
+        <!-- ====== Clinical tab — diagnosis, Rx, investigations, follow-up ====== -->
+        <div x-show="tab === 'clinical'" x-cloak class="space-y-4">
+
+        <div sec:authorize="!hasAnyRole('OWNER','DOCTOR')" th:if="${visit != null}"
+             class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+            Diagnosis, prescription, investigations and follow-up can only be edited by a doctor.
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Symptoms &amp; Examination</label>
+            <textarea name="notes" rows="3" placeholder="Chief complaints, history, exam findings…"
+                      th:readonly="${!canEditClinical}"
+                      th:classappend="${!canEditClinical} ? 'bg-slate-100 text-slate-600' : ''"
+                      class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      th:text="${visit != null ? visit.notes : notesVal}"></textarea>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Diagnosis</label>
+            <input name="diagnosis"
+                   th:value="${visit != null ? visit.diagnosis : diagnosisVal}"
+                   placeholder="e.g. Acute bronchitis"
+                   th:readonly="${!canEditClinical}"
+                   th:classappend="${!canEditClinical} ? 'bg-slate-100 text-slate-600' : ''"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+        </div>
+
+        <!-- Structured prescription entry — clinical only -->
+        <div th:if="${canEditClinical}">
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-medium text-slate-700">Prescription</label>
+                <span class="text-xs text-slate-400" x-text="lines.length + ' item' + (lines.length === 1 ? '' : 's')"></span>
+            </div>
+
+            <template x-for="(line, idx) in lines" :key="idx">
+                <div class="mb-3 bg-slate-50 rounded-lg p-3 space-y-2">
+                    <div class="flex items-start gap-2">
+                        <div class="flex-1 relative">
+                            <!-- canonical hidden inputs: exactly ONE per line, bound to Alpine state -->
+                            <input type="hidden" name="rxMedicineId" :value="line.medicineId || ''"/>
+                            <input type="hidden" name="rxCustomName" :value="line.customName || ''"/>
+
+                            <!-- inventory medicine (picked) -->
+                            <div x-show="line.mode === 'inventory' && line.medicineId">
+                                <div class="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2">
+                                    <span class="text-sm" x-text="line.label"></span>
+                                    <button type="button" @click="resetLine(line)" class="text-xs text-slate-500 underline">change</button>
+                                </div>
+                            </div>
+
+                            <!-- inventory search -->
+                            <div x-show="line.mode === 'inventory' && !line.medicineId" class="relative">
+                                <input type="search" placeholder="Search medicine"
+                                       x-model="line.query" @input="searchMed(line)"
+                                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                                <ul x-show="line.results.length > 0" x-cloak
+                                    class="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow max-h-56 overflow-y-auto">
+                                    <template x-for="m in line.results" :key="m.id">
+                                        <li>
+                                            <button type="button" @click="pickMed(line, m)"
+                                                    class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 border-b border-slate-100 last:border-0"
+                                                    x-text="m.label"></button>
+                                        </li>
+                                    </template>
+                                </ul>
+                                <button type="button" @click="line.mode = 'custom'"
+                                        class="absolute right-2 top-2 text-xs text-amber-700 underline">Not listed? add custom</button>
+                            </div>
+
+                            <!-- custom (free-text). Note: NO name attribute — value flows to hidden rxCustomName via x-model -->
+                            <div x-show="line.mode === 'custom'">
+                                <input type="text" x-model="line.customName"
+                                       placeholder="Type medicine name (will be added to procurement)"
+                                       class="w-full px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm"/>
+                                <p class="text-xs text-amber-700 mt-1">⚠ Not in inventory — will be queued in Procurement.</p>
+                                <button type="button" @click="resetLine(line)"
+                                        class="text-xs text-slate-500 underline mt-1">switch to inventory search</button>
+                            </div>
+                        </div>
+                        <button type="button" @click="removeLine(idx)" x-show="lines.length > 1"
+                                class="text-red-500 px-2 self-center">✕</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <select name="rxDosage" x-model="line.dosage"
+                                class="px-2 py-1.5 rounded-lg border border-slate-300 text-sm">
+                            <option value="">Dosage</option>
+                            <option value="1-0-0">1-0-0</option>
+                            <option value="0-1-0">0-1-0</option>
+                            <option value="0-0-1">0-0-1</option>
+                            <option value="1-0-1">1-0-1</option>
+                            <option value="1-1-0">1-1-0</option>
+                            <option value="1-1-1">1-1-1</option>
+                            <option value="SOS">SOS (as needed)</option>
+                            <option value="STAT">STAT (now)</option>
+                        </select>
+                        <input name="rxDuration" type="text" x-model="line.duration"
+                               placeholder="Duration (e.g. 5 days)"
+                               class="px-2 py-1.5 rounded-lg border border-slate-300 text-sm"/>
+                        <select name="rxFrequency" x-model="line.frequency"
+                                class="px-2 py-1.5 rounded-lg border border-slate-300 text-sm">
+                            <option value="">Timing</option>
+                            <option value="after food">after food</option>
+                            <option value="before food">before food</option>
+                            <option value="with water">with water</option>
+                            <option value="BD">BD (twice daily)</option>
+                            <option value="TDS">TDS (thrice daily)</option>
+                            <option value="QID">QID (4× daily)</option>
+                        </select>
+                        <input name="rxInstructions" type="text" x-model="line.instructions"
+                               placeholder="Extra instructions"
+                               class="px-2 py-1.5 rounded-lg border border-slate-300 text-sm"/>
+                    </div>
+                </div>
+            </template>
+
+            <button type="button" @click="addLine()" class="text-primary-600 text-sm font-medium">+ Add another medicine</button>
+        </div>
+
+        <!-- Investigations — clinical only -->
+        <div th:if="${canEditClinical}">
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-medium text-slate-700">Investigations</label>
+                <span class="text-xs text-slate-400" x-text="investigations.length + ' test' + (investigations.length === 1 ? '' : 's')"></span>
+            </div>
+
+            <!-- Searchable master picker — type/search/click to add an investigation -->
+            <div class="relative mb-2" @click.away="invOpen = false">
+                <input type="text" x-model="invQuery" @focus="invOpen = true"
+                       @keydown.enter.prevent="addInvestigationFromQuery()"
+                       @keydown.escape="invOpen = false"
+                       placeholder="Search investigations (or type a new one)…"
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                <ul x-show="invOpen" x-cloak
+                    class="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow max-h-60 overflow-y-auto">
+                    <template x-for="m in filteredMasterInvestigations" :key="m">
+                        <li>
+                            <button type="button" @click="addInvestigation(m); invQuery = ''"
+                                    class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 border-b border-slate-100 last:border-0"
+                                    x-text="m"></button>
+                        </li>
+                    </template>
+                    <li x-show="invQuery.trim() &amp;&amp; !invExactMatch()">
+                        <button type="button" @click="addInvestigationFromQuery()"
+                                class="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 text-amber-700">
+                            + Add "<span x-text="invQuery.trim()"></span>" as new
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <template x-for="(inv, idx) in investigations" :key="idx">
+                <div class="mb-2 bg-slate-50 rounded-lg p-2">
+                    <div class="flex gap-2 items-center">
+                        <input type="text" name="investigationName" x-model="inv.name"
+                               placeholder="Test name (e.g. CBC, Chest X-ray)"
+                               class="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm"/>
+                        <button type="button" @click="removeInvestigation(idx)"
+                                class="text-red-500 px-2">✕</button>
+                    </div>
+                    <input type="text" name="investigationInstructions" x-model="inv.instructions"
+                           placeholder="Instructions (optional — e.g. fasting required)"
+                           class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"/>
+                </div>
+            </template>
+
+            <button type="button" @click="addInvestigation('')" class="text-primary-600 text-sm font-medium">+ Add blank row</button>
+            <p class="text-xs text-slate-400 mt-1">
+                The picker uses your clinic's <a href="/investigations" class="underline">investigation master list</a>.
+                Anything new you type is added automatically.
+            </p>
+        </div>
+
+        <div th:if="${canEditClinical}">
+            <label class="text-sm font-medium text-slate-700">Prescription (photo / PDF)</label>
+            <input type="file" name="prescriptionFile" accept="image/*,application/pdf" capture="environment"
+                   class="mt-1 w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary-700"/>
+            <p class="text-xs text-slate-400 mt-1" th:text="${visit != null and visit.prescriptionFile != null} ? 'A file is already attached — pick a new one only to replace it.' : 'Tap to capture using your phone camera.'"></p>
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-slate-700">Follow-up date</label>
+            <input name="followUpDate" type="date"
+                   th:min="${visit != null ? null : today}"
+                   th:value="${visit != null and visit.followUpDate != null ? visit.followUpDate : null}"
+                   th:readonly="${!canEditClinical}"
+                   th:classappend="${!canEditClinical} ? 'bg-slate-100 text-slate-600' : ''"
+                   class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+            <p class="text-xs text-slate-400 mt-1" th:if="${visit == null}">Must be today or later.</p>
+        </div>
+
+        </div><!-- /Clinical tab -->
+
+        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg">
+            Save Visit
+        </button>
+    </form>
+
+<script>
+    function visitForm() {
+        return {
+            // Tab — 'reception' (vitals) or 'clinical' (Rx, diagnosis, etc.)
+            tab: 'reception',
+
+            allMedicines: [],
+            lines: [],
+
+            investigations: [],
+            // Master list fed by the server (medical_investigation table, scoped to this clinic).
+            masterInvestigations: [],
+            invQuery: '',
+            invOpen: false,
+
+            initFromForm(el) {
+                // Always start on Vitals — that's the natural first step of every visit,
+                // even when the same user (e.g. a doctor in a small clinic) does both roles.
+                this.tab = 'reception';
+
+                try { this.allMedicines = JSON.parse(el.dataset.medicines || '[]'); }
+                catch (e) { this.allMedicines = []; }
+
+                try { this.masterInvestigations = JSON.parse(el.dataset.masterInvestigations || '[]'); }
+                catch (e) { this.masterInvestigations = []; }
+
+                // Restore prescription lines from server (edit mode / validation re-render)
+                let initial = [];
+                try { initial = JSON.parse(el.dataset.initialLines || '[]'); } catch (e) {}
+                if (initial.length > 0) {
+                    this.lines = initial.map(l => this.makeLineFrom(l));
+                } else {
+                    this.lines = [this.blankLine()];
+                }
+
+                // Restore investigations
+                let initialInv = [];
+                try { initialInv = JSON.parse(el.dataset.initialInvestigations || '[]'); } catch (e) {}
+                this.investigations = initialInv.map(i => ({ name: i.name || '', instructions: i.instructions || '' }));
+            },
+
+            makeLineFrom(l) {
+                const medicineId = l.medicineId || '';
+                const customName = l.customName || '';
+                const med = medicineId ? this.allMedicines.find(m => String(m.id) === String(medicineId)) : null;
+                return {
+                    mode: medicineId ? 'inventory' : (customName ? 'custom' : 'inventory'),
+                    medicineId: medicineId,
+                    label: med ? med.label : '',
+                    customName: customName,
+                    query: '',
+                    results: [],
+                    dosage: l.dosage || '',
+                    frequency: l.frequency || '',
+                    duration: l.duration || '',
+                    instructions: l.instructions || ''
+                };
+            },
+
+            blankLine() {
+                return {
+                    mode: 'inventory',
+                    medicineId: '',
+                    label: '',
+                    customName: '',
+                    query: '',
+                    results: [],
+                    dosage: '',
+                    frequency: '',
+                    duration: '',
+                    instructions: ''
+                };
+            },
+
+            addLine() { this.lines.push(this.blankLine()); },
+            removeLine(i) { this.lines.splice(i, 1); },
+
+            addInvestigation(name) {
+                this.investigations.push({ name: name || '', instructions: '' });
+            },
+            removeInvestigation(i) { this.investigations.splice(i, 1); },
+
+            get filteredMasterInvestigations() {
+                const q = this.invQuery.trim().toLowerCase();
+                const alreadyAdded = new Set(
+                    this.investigations.map(i => (i.name || '').trim().toLowerCase()).filter(s => s));
+                return this.masterInvestigations
+                    .filter(m => !alreadyAdded.has(m.toLowerCase()))
+                    .filter(m => q === '' || m.toLowerCase().includes(q))
+                    .slice(0, 30);
+            },
+            invExactMatch() {
+                const q = this.invQuery.trim().toLowerCase();
+                return q && this.masterInvestigations.some(m => m.toLowerCase() === q);
+            },
+            addInvestigationFromQuery() {
+                const v = this.invQuery.trim();
+                if (!v) return;
+                this.addInvestigation(v);
+                this.invQuery = '';
+                this.invOpen = false;
+            },
+
+            searchMed(line) {
+                const q = (line.query || '').trim().toLowerCase();
+                if (!q) { line.results = []; return; }
+                line.results = this.allMedicines
+                    .filter(m => m.label.toLowerCase().includes(q))
+                    .slice(0, 8);
+            },
+            pickMed(line, m) {
+                line.medicineId = m.id;
+                line.label = m.label;
+                line.query = '';
+                line.results = [];
+            },
+            resetLine(line) {
+                line.mode = 'inventory';
+                line.medicineId = '';
+                line.label = '';
+                line.customName = '';
+                line.query = '';
+                line.results = [];
+            }
+        };
+    }
+</script>
+</section>
+</body>
+</html>

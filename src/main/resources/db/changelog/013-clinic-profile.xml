@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="013-clinic-profile" author="claude">
+        <addColumn tableName="clinic">
+            <column name="logo_path"   type="VARCHAR(255)"/>
+            <column name="tagline"     type="VARCHAR(255)"/>
+            <column name="email"       type="VARCHAR(128)"/>
+            <column name="website"     type="VARCHAR(255)"/>
+            <column name="license_no"  type="VARCHAR(64)"/>
+            <column name="gstin"       type="VARCHAR(16)"/>
+            <column name="footer_note" type="VARCHAR(512)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

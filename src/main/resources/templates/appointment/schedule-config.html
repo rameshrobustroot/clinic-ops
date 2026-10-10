@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Doctor Schedule')}"></head>
+<body th:replace="~{fragments/layout :: body(~{::section}, 'schedule')}">
+<section>
+    <div class="flex items-center gap-3 mb-4">
+        <a href="/appointments" class="text-primary-600">←</a>
+        <div>
+            <h1 class="text-xl font-semibold" th:text="'Dr ' + ${doctor.fullName}"></h1>
+            <p class="text-xs text-slate-400">Appointment schedule configuration</p>
+        </div>
+    </div>
+
+    <!--
+      x-data lives on the <form> so dirty tracking covers every field.
+
+      Initial server values are passed via data-* attributes (th:attr);
+      init() reads them so Alpine.js knows the saved state without mixing
+      Thymeleaf expressions inside Alpine.js object literals.
+
+      Dirty tracking strategy:
+        • bookingMode / sessions  → $watch registered inside $nextTick so the
+          init() assignments never trigger the callback and mark the form dirty.
+        • Slot-settings inputs    → @change / @input set dirty = true directly.
+    -->
+    <form th:action="@{/doctors/{id}/schedule(id=${doctor.id})}" method="post"
+          th:object="${form}"
+          th:attr="data-sessions=${sessionsJson},data-booking-mode=${form.bookingMode}"
+          x-data="{
+              dirty: false,
+              bookingMode: 'SLOT_BASED',
+
+              days: [
+                  {num:1, label:'Monday'},
+                  {num:2, label:'Tuesday'},
+                  {num:3, label:'Wednesday'},
+                  {num:4, label:'Thursday'},
+                  {num:5, label:'Friday'},
+                  {num:6, label:'Saturday'},
+                  {num:7, label:'Sunday'}
+              ],
+              sessions: [],
+
+              init() {
+                  /* Restore saved booking mode */
+                  var mode = this.$el.getAttribute('data-booking-mode');
+                  if (mode) this.bookingMode = mode;
+
+                  /* Restore saved working-hour sessions */
+                  var raw = this.$el.getAttribute('data-sessions');
+                  this.sessions = (raw && raw.length > 2) ? JSON.parse(raw) : [];
+
+                  /* Register watches AFTER init so the assignments above do NOT
+                     mark the form dirty on first load.                          */
+                  this.$nextTick(() => {
+                      this.$watch('bookingMode', () => { this.dirty = true; });
+                      this.$watch('sessions',    () => { this.dirty = true; });
+                  });
+              },
+
+              dayOn(d)     { return this.sessions.some(s => s.d === d); },
+              toggleDay(d) {
+                  if (this.dayOn(d)) {
+                      this.sessions = this.sessions.filter(s => s.d !== d);
+                  } else {
+                      this.sessions.push({d: d, s: '09:00', e: '17:00'});
+                  }
+              },
+              addSession(d) {
+                  let last = null;
+                  for (let k = this.sessions.length - 1; k >= 0; k--) {
+                      if (this.sessions[k].d === d) { last = this.sessions[k]; break; }
+                  }
+                  const start = last ? last.e : '09:00';
+                  const h    = parseInt(start.split(':')[0], 10);
+                  const m    = start.split(':')[1];
+                  const endH = Math.min(h + 1, 23);
+                  const end  = (endH < 10 ? '0' : '') + endH + ':' + m;
+                  this.sessions.push({d: d, s: start, e: end});
+              },
+              removeSession(i) { this.sessions.splice(i, 1); },
+              forDay(d) {
+                  return this.sessions
+                      .map((s, i) => ({d: s.d, s: s.s, e: s.e, i: i}))
+                      .filter(x => x.d === d);
+              },
+              /* Returns true when session[i] has end <= start */
+              sessionInvalid(i) {
+                  const s = this.sessions[i];
+                  return s && s.s && s.e && s.e <= s.s;
+              },
+              /* True if any session across all days has an invalid time range */
+              hasErrors() {
+                  return this.sessions.some((_, i) => this.sessionInvalid(i));
+              }
+          }"
+          class="space-y-4">
+
+        <!-- ── Booking mode ──────────────────────────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Booking Mode</h2>
+
+            <div class="grid grid-cols-2 gap-3">
+
+                <!-- Time Slots card -->
+                <label class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-colors"
+                       :class="bookingMode === 'SLOT_BASED' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'">
+                    <input type="radio" name="bookingMode" value="SLOT_BASED"
+                           :checked="bookingMode === 'SLOT_BASED'"
+                           @change="bookingMode = 'SLOT_BASED'"
+                           class="sr-only"/>
+                    <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-sm font-medium text-slate-700">Time Slots</span>
+                    <span class="text-xs text-slate-400 text-center">Fixed time slots; patients book a specific time</span>
+                </label>
+
+                <!-- Token Queue card -->
+                <label class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-colors"
+                       :class="bookingMode === 'TOKEN_ONLY' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'">
+                    <input type="radio" name="bookingMode" value="TOKEN_ONLY"
+                           :checked="bookingMode === 'TOKEN_ONLY'"
+                           @change="bookingMode = 'TOKEN_ONLY'"
+                           class="sr-only"/>
+                    <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                    </svg>
+                    <span class="text-sm font-medium text-slate-700">Token Queue</span>
+                    <span class="text-xs text-slate-400 text-center">Sequential tokens; no fixed time assigned</span>
+                </label>
+
+            </div>
+        </div>
+
+        <!-- ── Slot / Token settings ─────────────────────────────────── -->
+        <!--
+          The grid and its label adapt to bookingMode:
+            SLOT_BASED  → 3 cols: Slot Duration | Max/Slot | Max/Day
+            TOKEN_ONLY  → 1 col:  Max Tokens/Day only
+          Slot Duration + Max/Slot stay in the DOM (x-show hides them) so their
+          values are preserved if the user switches modes and saves.
+        -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold"
+                x-text="bookingMode === 'SLOT_BASED' ? 'Slot Settings' : 'Token Settings'"></h2>
+
+            <div class="grid gap-3"
+                 :class="bookingMode === 'SLOT_BASED' ? 'grid-cols-3' : 'grid-cols-1'">
+
+                <!-- Slot Duration — slot-based only -->
+                <div x-show="bookingMode === 'SLOT_BASED'">
+                    <label class="text-sm font-medium text-slate-700">Slot Duration</label>
+                    <select th:field="*{slotDurationMinutes}"
+                            @change="dirty = true"
+                            class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300
+                                   focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white text-sm">
+                        <option value="10">10 min</option>
+                        <option value="15">15 min</option>
+                        <option value="20">20 min</option>
+                        <option value="30">30 min</option>
+                        <option value="60">60 min</option>
+                    </select>
+                </div>
+
+                <!-- Max per Slot — slot-based only -->
+                <div x-show="bookingMode === 'SLOT_BASED'">
+                    <label class="text-sm font-medium text-slate-700">Max / Slot</label>
+                    <input th:field="*{maxPerSlot}" type="number" min="1" max="20"
+                           @input="dirty = true"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300
+                                  focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                    <p class="text-xs text-slate-400 mt-0.5">Patients per time slot</p>
+                </div>
+
+                <!-- Max per Day — always visible; label and hint adapt to mode -->
+                <div>
+                    <label class="text-sm font-medium text-slate-700"
+                           x-text="bookingMode === 'SLOT_BASED' ? 'Max / Day' : 'Max Tokens / Day'"></label>
+                    <input th:field="*{maxPerDay}" type="number" min="1" max="999"
+                           placeholder="No limit"
+                           @input="dirty = true"
+                           class="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300
+                                  focus:ring-2 focus:ring-primary-500 focus:outline-none text-sm"/>
+                    <p class="text-xs text-slate-400 mt-0.5"
+                       x-text="bookingMode === 'SLOT_BASED'
+                           ? 'Leave blank for no cap'
+                           : 'Max tokens issued per day. Leave blank for no limit.'"></p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── Working hours ─────────────────────────────────────────── -->
+        <!--
+          Days are rendered entirely by Alpine.js x-for — NO Thymeleaf th:each.
+          Sessions JSON is kept in sync via x-effect on a hidden input whose
+          name="sessionsJson" is always submitted with the form.
+        -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+
+            <!-- x-effect keeps sessionsJson hidden field in sync -->
+            <input type="hidden" name="sessionsJson" x-ref="sj"
+                   x-effect="$refs.sj.value = JSON.stringify(sessions)"/>
+
+            <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Working Hours</h2>
+            <p class="text-xs text-slate-400">
+                Toggle each day on. Use <strong>+ Add session</strong> for split shifts
+                (e.g. 10:00–13:00 and 15:00–18:00).
+            </p>
+
+            <!-- Rendered entirely by Alpine.js — no th:each -->
+            <div class="space-y-1">
+                <template x-for="day in days" :key="day.num">
+                    <div class="rounded-lg transition-colors"
+                         :class="dayOn(day.num) ? 'bg-slate-50' : ''">
+
+                        <!-- Day header: toggle + label + add-session button -->
+                        <div class="flex items-center justify-between px-2 py-2">
+
+                            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                                <div class="relative shrink-0">
+                                    <input type="checkbox"
+                                           :checked="dayOn(day.num)"
+                                           @change="toggleDay(day.num)"
+                                           class="sr-only peer"/>
+                                    <div class="w-9 h-5 bg-slate-200 peer-checked:bg-primary-500 rounded-full transition-colors"></div>
+                                    <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow
+                                                transition-transform peer-checked:translate-x-4"></div>
+                                </div>
+                                <span class="text-sm font-medium text-slate-700" x-text="day.label"></span>
+                            </label>
+
+                            <button type="button"
+                                    x-show="dayOn(day.num)"
+                                    @click="addSession(day.num)"
+                                    class="text-xs font-medium text-primary-600 hover:text-primary-800
+                                           border border-primary-300 rounded px-2 py-0.5 hover:bg-primary-50">
+                                + Add session
+                            </button>
+                        </div>
+
+                        <!-- Session rows for this day -->
+                        <div x-show="dayOn(day.num)" class="pb-2 px-2 space-y-1.5">
+                            <template x-for="item in forDay(day.num)" :key="item.i">
+                                <div class="space-y-0.5">
+                                    <div class="flex items-center gap-2 pl-11">
+                                        <input type="time"
+                                               x-model="sessions[item.i].s"
+                                               :class="sessionInvalid(item.i)
+                                                   ? 'border-red-400 ring-1 ring-red-400'
+                                                   : 'border-slate-300 focus:ring-primary-500'"
+                                               class="flex-1 px-2 py-1.5 rounded-lg border
+                                                      focus:ring-2 focus:outline-none text-sm"/>
+                                        <span class="text-slate-400 text-xs shrink-0">to</span>
+                                        <input type="time"
+                                               x-model="sessions[item.i].e"
+                                               :class="sessionInvalid(item.i)
+                                                   ? 'border-red-400 ring-1 ring-red-400'
+                                                   : 'border-slate-300 focus:ring-primary-500'"
+                                               class="flex-1 px-2 py-1.5 rounded-lg border
+                                                      focus:ring-2 focus:outline-none text-sm"/>
+                                        <button type="button"
+                                                @click="removeSession(item.i)"
+                                                class="shrink-0 w-6 h-6 flex items-center justify-center
+                                                       rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500
+                                                       text-lg leading-none">
+                                            ×
+                                        </button>
+                                    </div>
+                                    <!-- Inline error — shown as soon as end ≤ start -->
+                                    <p x-show="sessionInvalid(item.i)"
+                                       class="pl-11 text-xs text-red-500 font-medium">
+                                        ⚠ End time must be after start time.
+                                    </p>
+                                </div>
+                            </template>
+                        </div>
+
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── Save — disabled until the user makes a change or if there are errors ── -->
+        <div>
+            <p x-show="hasErrors()"
+               class="text-center text-sm text-red-500 font-medium mb-2">
+                ⚠ Fix the invalid time ranges above before saving.
+            </p>
+            <button type="submit"
+                    :disabled="!dirty || hasErrors()"
+                    :class="(dirty && !hasErrors())
+                        ? 'bg-primary-600 hover:bg-primary-700 text-white cursor-pointer'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+                    class="w-full font-semibold py-3 rounded-lg transition-colors">
+                Save Schedule
+            </button>
+        </div>
+    </form>
+
+</section>
+</body>
+</html>
