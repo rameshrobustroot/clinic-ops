@@ -1,5 +1,7 @@
 # ClinicOps — Daily operations app for small clinics
 
+[![Tests](https://github.com/rameshrobustroot/clinic-ops/actions/workflows/tests.yml/badge.svg)](https://github.com/rameshrobustroot/clinic-ops/actions/workflows/tests.yml)
+
 Mobile-first PWA for single-doctor / small-clinic operations:
 
 - Patient registry + visit history + prescription (image/PDF/text)
@@ -76,6 +78,21 @@ mvn test -Dtest='SaleServiceTest*'        # one class (include * to pick up @Nes
 ```
 
 Coverage report: `target/site/jacoco/index.html` (generated on every `mvn test`).
+
+CI (`.github/workflows/tests.yml`) runs on every push to `main` and every pull request, as two
+parallel jobs: the suite on H2, and the same suite on PostgreSQL 17 with the real Liquibase
+migrations and `ddl-auto: validate`. To reproduce the Postgres job locally, point the test profile
+at a scratch database with environment variables:
+
+```bash
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/clinic_ops_test \
+SPRING_DATASOURCE_USERNAME=postgres SPRING_DATASOURCE_PASSWORD=postgres \
+SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
+SPRING_LIQUIBASE_ENABLED=true SPRING_JPA_HIBERNATE_DDL_AUTO=validate \
+mvn test
+```
+
+Use a throwaway database: tests roll back their own rows, but Liquibase will migrate the schema.
 
 | Layer | Where | Style |
 | --- | --- | --- |
